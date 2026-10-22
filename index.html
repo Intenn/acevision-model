@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html,body{margin:0}body{font-family:system-ui,sans-serif}[hidden]{display:none!important}</style>
+<title>AceVision Fırlatıcı</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: teknik resim antet bloğu gibi üst şerit; solda 3B sahne, sağda kontrol + ölçü paneli (telefonda alt alta) */
+:root{
+  --bg:#eceff2; --panel:#ffffff; --ink:#15202b; --muted:#56636f; --line:#cfd6dd;
+  --accent:#2a5f9e; --accent-ink:#ffffff; --scene:#e2e7ec; --grid:#bcc6cf; --edge:#1d262e;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1418; --panel:#161d23; --ink:#e2e8ed; --muted:#91a0ac; --line:#29333c;
+  --accent:#86b4ea; --accent-ink:#0d1520; --scene:#121a20; --grid:#2a3640; --edge:#06090b; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0f1418; --panel:#161d23; --ink:#e2e8ed; --muted:#91a0ac; --line:#29333c;
+  --accent:#86b4ea; --accent-ink:#0d1520; --scene:#121a20; --grid:#2a3640; --edge:#06090b; color-scheme:dark }
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 24px;max-width:1500px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.titleblock{display:grid;grid-template-columns:minmax(0,1fr) auto;border:1.5px solid var(--ink);background:var(--panel)}
+.titleblock>div{padding:8px 12px;min-width:0}
+.titleblock .name{border-right:1.5px solid var(--ink)}
+.titleblock h1{font-family:var(--f-display);font-weight:700;font-size:26px;letter-spacing:.02em;margin:0;line-height:1.1;text-wrap:balance}
+.titleblock .sub{color:var(--muted);font-size:12.5px}
+.meta{display:grid;grid-template-columns:auto auto;gap:2px 14px;font-family:var(--f-mono);font-size:11.5px;align-content:center}
+.meta span:nth-child(odd){color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;align-items:start}
+.stage{position:relative;height:min(78vh,760px);min-height:360px;border:1px solid var(--line);background:var(--scene);overflow:hidden}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+.views{position:absolute;left:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-family:var(--f-display);font-weight:600;font-size:14px;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:4px 10px;cursor:pointer}
+.chip:hover{border-color:var(--accent)}
+.chip:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:4px 8px;max-width:240px;transform:translate(12px,12px);white-space:normal}
+.gearcap{position:absolute;left:10px;bottom:34px;background:var(--panel);border:1px solid var(--accent);padding:8px 10px;font-size:12px;max-width:min(320px,calc(100% - 20px))}
+.gearcap b{font-family:var(--f-display);font-size:15px;letter-spacing:.04em;text-transform:uppercase;display:block;color:var(--accent)}
+.gearcap span{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11.5px;color:var(--muted);background:color-mix(in srgb,var(--scene) 80%,transparent);padding:2px 6px}
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.box{background:var(--panel);border:1px solid var(--line)}
+.box h2{font-family:var(--f-display);font-weight:600;font-size:15px;letter-spacing:.08em;text-transform:uppercase;margin:0;padding:7px 12px;border-bottom:1px solid var(--line);color:var(--muted)}
+.ctrls{padding:12px;display:flex;flex-direction:column;gap:14px}
+.ctrl label{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:500}
+.ctrl output{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--accent)}
+.ctrl small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 0}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font-family:var(--f-display);font-weight:600;font-size:16px;letter-spacing:.05em;text-transform:uppercase;padding:8px 14px;border:1.5px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn[aria-pressed="false"]{background:transparent;color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+td{padding:5px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+td:last-child{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.note{padding:8px 12px;color:var(--muted);font-size:11.5px;border-top:1px solid var(--line)}
+.parts{list-style:none;margin:0;padding:6px 0}
+.parts li{display:grid;grid-template-columns:14px minmax(0,1fr);gap:10px;padding:4px 12px;font-size:12.5px;align-items:start}
+.sw{width:14px;height:14px;margin-top:2px;border:1px solid var(--edge)}
+.parts b{font-weight:600}
+.parts span{color:var(--muted)}
+/* yalnız model: tüm yazı ve kontroller gizli, sahne tam ekran */
+.titleblock,.side,.views,.hint,.tip,.gearcap{display:none!important}
+.stage{position:fixed;inset:0;height:auto!important;min-height:0!important;border:0}
+.dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));width:min(620px,calc(100% - 24px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)));background:color-mix(in srgb,var(--panel) 88%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--line);padding:10px 12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 16px;z-index:5}
+.dock .ctrl{min-width:0}
+.dock .ctrl small{display:none}
+.dock .ctrl label{font-size:12.5px}
+.dock-btns{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.dock .btn{font-size:14px;padding:6px 12px}
+.dock .chip{font-size:14px;padding:6px 12px}
+@media (max-width:560px){ .dock{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:900px){
+  .main{grid-template-columns:minmax(0,1fr)}
+  .stage{height:62vh;min-height:340px}
+  .titleblock{grid-template-columns:minmax(0,1fr)}
+  .titleblock .name{border-right:0;border-bottom:1.5px solid var(--ink)}
+}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header class="titleblock">
+    <div class="name">
+      <h1>AceVision Fırlatıcı</h1>
+      <div class="sub">Pan: Ø25 mil + 2x 6005 rulman, 120/16 iç dişli · Tilt: kafa arka alt köşeden menteşeli, iki yanda sabit motorlu dikey T8 vida ve kayar mafsal · Kafa: kare sigma çerçeve, her şey içinde</div>
+    </div>
+    <div class="meta">
+      <span>Proje</span><span>MMÜ 495 · Grup 14</span>
+      <span>Birim</span><span>mm, derece</span>
+      <span>Revizyon</span><span>D · Ön tasarım</span>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="stage" id="stage">
+      <div class="views">
+        <button class="chip" data-view="iso">İzometrik</button>
+        <button class="chip" data-view="side">Yandan</button>
+        <button class="chip" data-view="top">Üstten</button>
+        <button class="chip" data-view="back">Arkadan</button>
+        <button class="chip" id="gearBtn" aria-pressed="false">Pan dişlisi</button>
+      </div>
+      <div class="tip" id="tip" hidden></div>
+      <div class="dock" id="dock"><div class="dock-btns"></div></div>
+      <div class="gearcap" id="gearCap" hidden><b>Pan dişlisi</b>İç halka 120 diş, pinyon 16 diş, modül 1 · 1:7,5<br>Platform ve üst plaka saydam; tabla ±20° sallanarak kavramayı gösteriyor.<br>Halka açısı <span id="gRing">0,0°</span> · pinyon <span id="gPin">0°</span></div>
+      <div class="hint">Sürükle: döndür · Kaydır/sıkıştır: yakınlaş · Parçaya dokun: adı</div>
+    </div>
+
+    <aside class="side">
+      <section class="box">
+        <h2>Eksenler</h2>
+        <div class="ctrls">
+          <div class="ctrl">
+            <label for="pan">Pan (sağ +) <output id="panOut">0°</output></label>
+            <input type="range" id="pan" min="-25" max="25" step="0.5" value="0">
+            <small>±25°, 120/16 iç dişli, 1:7,5 redüksiyon, mil iki 6005 rulmanda</small>
+          </div>
+          <div class="ctrl">
+            <label for="tilt">Tilt (yükseliş) <output id="tiltOut">15°</output></label>
+            <input type="range" id="tilt" min="0" max="50" step="0.5" value="15">
+            <small>0–50°, somunlar vidada yukarı çıkar, mafsal blokları alt profilde öne kayar</small>
+          </div>
+          <div class="ctrl">
+            <label for="speed">Top hızı <output id="speedOut">22 m/s</output></label>
+            <input type="range" id="speed" min="10" max="30" step="0.5" value="22">
+            <small>Flywheel PWM ile açık çevrim</small>
+          </div>
+          <div class="btns">
+            <button class="btn" id="fire">Atış</button>
+            <button class="btn" id="spin" aria-pressed="true">Flywheel</button>
+            <button class="btn ghost" id="home">Sıfırla</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="box">
+        <h2>Anlık değerler</h2>
+        <table>
+          <tbody>
+            <tr><td>Somun yolu (0°'den)</td><td id="rL">–</td></tr>
+            <tr><td>Mafsal bloğu menteşeden uzaklık (profil boyunca)</td><td id="rR">–</td></tr>
+            <tr><td>Tilt motorları adım (2x, T8x8, 1/4)</td><td id="rTs">–</td></tr>
+            <tr><td>Pan motoru adım (1:7,5, 1/8)</td><td id="rPs">–</td></tr>
+            <tr><td>Namlu yüksekliği</td><td id="rH">–</td></tr>
+            <tr><td>Düşüş mesafesi</td><td id="rD">–</td></tr>
+            <tr><td>Yanal sapma (sağ +)</td><td id="rX">–</td></tr>
+          </tbody>
+        </table>
+        <div class="note">Düşüş değerleri hava direnci ve spin olmadan hesaplandı; gerçek top daha kısa düşer. Adımlar açılıştaki limit switch konumundan (pan 0°, tilt 0°) sayılır.</div>
+      </section>
+
+      <section class="box">
+        <h2>Parçalar</h2>
+        <ul class="parts" id="parts"></ul>
+        <div class="note">Vidalar dikey ve menteşenin 150 mm önünde, kaldıraç kolu her açıda 150 mm. Kafanın ağırlık merkezi yaklaşık 44°'de menteşenin üstünden geçer, yük yönü orada döner; anti-backlash somun bu yüzden gerekli. İki tilt motoru aynı STEP/DIR sinyaliyle birlikte sürülür. Ölçüler konuştuğumuz değerlerden; kesin tasarım değil.</div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const stage = document.getElementById('stage');
+const tip = document.getElementById('tip');
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---------- renderer, scene, camera ---------- */
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+stage.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32,1,5,80000);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = !reduce; controls.dampingFactor = .09;
+controls.maxPolarAngle = Math.PI*0.495;
+controls.autoRotate = !reduce; controls.autoRotateSpeed = 0.6;
+controls.addEventListener('start',()=>{ controls.autoRotate = false; }); controls.minDistance = 300; controls.maxDistance = 9000;
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x8a939c,.75));
+const key = new THREE.DirectionalLight(0xffffff,.85); key.position.set(900,1600,1200); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff,.35); fill.position.set(-1200,600,-900); scene.add(fill);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(30000,30000), new THREE.MeshBasicMaterial({color:0xffffff}));
+ground.rotation.x = -Math.PI/2; ground.position.y = -10.5; scene.add(ground);
+let grid = null;
+
+/* ---------- materials ---------- */
+const std = (c,m=.2,r=.55,extra={}) => new THREE.MeshStandardMaterial(Object.assign({color:c,metalness:m,roughness:r},extra));
+const M = {
+  alu: std(0x30353b,.45,.42), bright: std(0xc3cbd2,.55,.38), plate: std(0xb4bdc5,.5,.45), steel: std(0x737c85,.7,.35),
+  motor: std(0x262b30,.35,.5), cap: std(0x9aa3ab,.6,.4), petg: std(0xe2732b,.05,.55),
+  rubber: std(0x1a1c1f,0,.92), hub: std(0xa8b1b8,.6,.35), batt: std(0x2e4d78,.1,.6),
+  abs: std(0x394047,.1,.7), panel: std(0x2c3238,.15,.6), red: std(0xc4302a,.1,.5), brass: std(0xc8a24a,.7,.35),
+  screw: std(0xb4bbc1,.85,.28), ball: std(0xcfe43a,0,.85), iron: std(0x4d555c,.5,.5),
+  smoke: std(0x1c2228,.1,.15,{transparent:true,opacity:.5,depthWrite:false,side:THREE.DoubleSide}),
+  acrylic: std(0x9fd0f5,.0,.1,{transparent:true,opacity:.22,depthWrite:false,side:THREE.DoubleSide})
+};
+const edgeMat = new THREE.LineBasicMaterial({color:0x1d262e,transparent:true,opacity:.38});
+const pickables = [];
+
+function mk(geo, mat, part, parent, x=0,y=0,z=0){
+  const m = new THREE.Mesh(geo,mat); m.position.set(x,y,z); m.userData.part = part;
+  if(!mat.transparent && geo.type !== 'SphereGeometry'){
+    m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo,28), edgeMat));
+  }
+  parent.add(m); pickables.push(m); return m;
+}
+const Box = (w,h,d) => new THREE.BoxGeometry(w,h,d);
+const CylX = (r,l,s=28) => { const g=new THREE.CylinderGeometry(r,r,l,s); g.rotateZ(Math.PI/2); return g; };
+const CylY = (r,l,s=28,open=false) => new THREE.CylinderGeometry(r,r,l,s,1,open);
+const CylZ = (r,l,s=28) => { const g=new THREE.CylinderGeometry(r,r,l,s); g.rotateX(Math.PI/2); return g; };
+
+/* flat shape lying in XZ plane: shape (x,y) -> world (x,z); extrusion goes down -y */
+function flatExtrude(shape, depth){
+  const g = new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:40});
+  g.rotateX(Math.PI/2); return g;
+}
+function annulus(rOut,rIn,depth){
+  const s = new THREE.Shape(); s.absarc(0,0,rOut,0,Math.PI*2,false);
+  const h = new THREE.Path(); h.absarc(0,0,rIn,0,Math.PI*2,true); s.holes.push(h);
+  return flatExtrude(s,depth);
+}
+/* full internal ring gear, module 1 */
+function ringGear(z,rOut,depth){
+  const p=2*Math.PI/z, r=z/2, rTip=r-1, rRoot=r+1.25;
+  const s = new THREE.Shape(); s.absarc(0,0,rOut,0,Math.PI*2,false);
+  const h = new THREE.Path();
+  for(let k=z-1;k>=0;k--){
+    const c=k*p;
+    [[c+.5*p,rRoot],[c+.22*p,rRoot],[c+.11*p,rTip],[c-.11*p,rTip],[c-.22*p,rRoot]].forEach(([a,rr],i)=>{
+      const x=Math.cos(a)*rr, y=Math.sin(a)*rr; (k===z-1&&i===0)?h.moveTo(x,y):h.lineTo(x,y);
+    });
+  }
+  h.closePath(); s.holes.push(h);
+  return flatExtrude(s,depth);
+}
+function roundedPlate(w,d,r,depth){
+  const s=new THREE.Shape(), x=-w/2, y=-d/2;
+  s.moveTo(x+r,y); s.lineTo(x+w-r,y); s.quadraticCurveTo(x+w,y,x+w,y+r);
+  s.lineTo(x+w,y+d-r); s.quadraticCurveTo(x+w,y+d,x+w-r,y+d);
+  s.lineTo(x+r,y+d); s.quadraticCurveTo(x,y+d,x,y+d-r);
+  s.lineTo(x,y+r); s.quadraticCurveTo(x,y,x+r,y);
+  const hole=new THREE.Path(); hole.absarc(0,15,13,0,Math.PI*2,true); /* shaft hole, platform sits 15 mm aft */ s.holes.push(hole);
+  return flatExtrude(s,depth);
+}
+function pinion(){
+  const z=16, p=2*Math.PI/z, rTip=9, rRoot=6.75;
+  const s = new THREE.Shape();
+  for(let k=0;k<z;k++){
+    const c=k*p;
+    [[c-.5*p,rRoot],[c-.24*p,rRoot],[c-.12*p,rTip],[c+.12*p,rTip],[c+.24*p,rRoot]].forEach(([a,r],i)=>{
+      const x=Math.cos(a)*r, y=Math.sin(a)*r; (k===0&&i===0)?s.moveTo(x,y):s.lineTo(x,y);
+    });
+  }
+  s.closePath();
+  const h=new THREE.Path(); h.absarc(0,0,2.5,0,Math.PI*2,true); s.holes.push(h);
+  return flatExtrude(s,6);
+}
+
+/* ---------- geometry constants (mm) ---------- */
+/* Kafa arka alt köşesinden menteşeli; dikey vidalar kafanın iki yanında */
+const PIV = new THREE.Vector3(0,204,-120);   // tilt pivot (rear-bottom of head) in pan frame
+const D_ARM = 150;                          // pivot -> screw, horizontal
+const Y0 = 14;                              // bottom member centerline above pivot (head local)
+const HX = 150;                             // head side member centerline
+const SCREW_X = 190, SCREW_Z = PIV.z + D_ARM;
+const MOTOR_FACE_Y = 445, KP_Y = 190;
+const H_T = 314, H_F = 294;                 // head outer top / front (local)
+const BALL_Y = 160, MUZZLE_Z = H_F+2;
+
+/* ---------- fixed base ---------- */
+const base = new THREE.Group(); scene.add(base);
+const P_FRAME = 'Sigma profil 20x20 (gövde iskeleti)';
+[-1,1].forEach(sx=>[-1,1].forEach(sz=> mk(Box(20,130,20),M.alu,P_FRAME,base,sx*200,85,sz*150)));
+[-150,150].forEach(z=>mk(Box(420,20,20),M.alu,P_FRAME,base,0,10,z));
+[-200,200].forEach(x=>mk(Box(20,20,280),M.alu,P_FRAME,base,x,10,0));
+const basePlate = mk(Box(440,8,340),M.plate,'Üst plaka, 8 mm alüminyum',base,0,154,0);
+mk(Box(380,4,280),M.abs,'Alt plaka',base,0,22,0);
+mk(Box(160,125,170),M.batt,'Akü 12 V (kuru ya da LiFePO4)',base,-110,86.5,-10);
+[-140,-80].forEach(x=>mk(CylY(6,10),M.red,'Akü kutup başı',base,x,154,-60));
+mk(Box(140,70,170),M.abs,'Elektronik kutusu: ESP32, 4x TB6600, 2x BTS7960, LM2596, 74HCT541',base,120,59,-10);
+mk(Box(46,46,10),M.abs,'Akü şalteri + 30 A sigorta',base,150,100,165);
+mk(CylZ(13,22),M.red,'Akü şalteri (acil kesme)',base,150,100,178);
+/* pan bearing: housing with two 6005-2RS, Ø25 tube shaft */
+const PIN_OFF = 52;  // 120T ring (r60) - 16T pinion (r8)
+mk(Box(42,40,42),M.motor,'Pan motoru NEMA 17 (TB6600)',base,0,129,-PIN_OFF);
+mk(Box(43,6,43),M.cap,'Pan motoru NEMA 17 (TB6600)',base,0,147,-PIN_OFF);
+mk(CylY(29,54,40),M.bright,'Pan yatak gövdesi (alüminyum), içinde 2x 6005-2RS',base,0,123,0);
+mk(CylY(40,5,40),M.bright,'Pan yatak gövdesi flanşı, üst plakaya cıvatalı',base,0,147.5,0);
+[146,100].forEach(y=>mk(annulus(23.5,12.5,10),M.steel,'6005-2RS rulman (25x47x12)',base,0,y+5,0));
+mk(annulus(23.5,12.5,1),M.red,'6005-2RS keçesi',base,0,152,0);
+const pinGroup = new THREE.Group(); pinGroup.position.set(0,0,-PIN_OFF); base.add(pinGroup);
+mk(pinion(),M.brass,'Pinyon 16 diş, modül 1 (pan motoru milinde)',pinGroup,0,166,0);
+mk(CylY(2.5,22,16),M.steel,'Pan motoru mili Ø5',pinGroup,0,150,0);
+mk(Box(14,6,10),M.motor,'Pan limit switch',base,72,161,-30);
+/* smoked side panels and rubber feet */
+const baseSkins = [];
+[-161,161].forEach(z=>baseSkins.push(mk(Box(400,110,3),M.smoke,'Gövde yan paneli (füme akrilik)',base,0,85,z)));
+[-211,211].forEach(x=>baseSkins.push(mk(Box(3,110,300),M.smoke,'Gövde yan paneli (füme akrilik)',base,x,85,0)));
+[-1,1].forEach(sx=>[-1,1].forEach(sz=>mk(CylY(16,10,24),M.rubber,'Kauçuk ayak',base,sx*200,-5,sz*150)));
+
+/* ---------- pan group (rotating platform) ---------- */
+const pan = new THREE.Group(); scene.add(pan);
+const platPlate = mk(roundedPlate(430,300,40,8),M.plate,'Döner platform, 8 mm alüminyum, köşeleri R40',pan,0,174,-15);
+mk(CylY(12.5,78,32),M.steel,'Pan mili, Ø25 boru (kablolar içinden geçer)',pan,0,135,0);
+mk(annulus(25,12.5,6),M.bright,'Mil flanşı, platforma cıvatalı',pan,0,166,0);
+mk(ringGear(120,70,6),M.petg,'İç dişli halka 120 diş, modül 1, PETG (platform altına cıvatalı)',pan,0,166,0);
+
+/* rear-bottom hinge */
+/* rear hinge: two KP08 bearing blocks on spacers, outside the head; Ø8 shaft through head lugs */
+const HINGE_X = HX+30;
+[-1,1].forEach(s=>{
+  const x = s*HINGE_X;
+  mk(Box(24,16,62),M.steel,'Arka menteşe altlığı',pan,x,182,PIV.z);
+  mk(Box(14,28,55),M.iron,'Arka menteşe: KP08 rulmanlı yatak',pan,x,PIV.y-1,PIV.z);
+  mk(CylX(12,16,32),M.cap,'Arka menteşe: KP08 rulmanlı yatak',pan,x,PIV.y,PIV.z);
+  mk(CylX(8,8,24),M.bright,'Mil bileziği (eksenel kilit)',pan,x+s*13,PIV.y,PIV.z);
+});
+mk(CylX(4,2*HINGE_X+40,24),M.screw,'Arka menteşe mili Ø8, kafayla birlikte döner',pan,0,PIV.y,PIV.z);
+mk(Box(12,6,18),M.motor,'Tilt limit switch (0° dayama)',pan,-60,177,40);
+
+/* side towers: fixed motor on top, vertical screw, KP08 at bottom */
+const nuts = [];
+[-1,1].forEach(s=>{
+  const x = s*SCREW_X;
+  mk(Box(20,316,20),M.alu,'Tilt kulesi, sigma 20x20',pan,x,174+158,SCREW_Z+32);
+  mk(Box(48,6,62),M.steel,'Tilt motoru braketi (sabit)',pan,x,MOTOR_FACE_Y-3,SCREW_Z+12);
+  mk(Box(42,40,42),M.motor,'Tilt motoru NEMA 17, sabit, aşağı bakar (TB6600)',pan,x,MOTOR_FACE_Y+20,SCREW_Z);
+  mk(Box(43,6,43),M.cap,'Tilt motoru NEMA 17, sabit, aşağı bakar (TB6600)',pan,x,MOTOR_FACE_Y+3,SCREW_Z);
+  mk(CylY(9,22),M.hub,'Esnek kaplin 5x8',pan,x,MOTOR_FACE_Y-17,SCREW_Z);
+  const sl = (MOTOR_FACE_Y-28)-(KP_Y-8);
+  mk(CylY(4,sl,16),M.screw,'T8x8 trapez vida, dikey',pan,x,KP_Y-8+sl/2,SCREW_Z);
+  mk(Box(55,13,29),M.iron,'KP08 rulmanlı yatak (vida alt ucu)',pan,x,180,SCREW_Z+6);
+  mk(CylY(12,15),M.cap,'KP08 rulmanlı yatak (vida alt ucu)',pan,x,KP_Y,SCREW_Z);
+  const n = new THREE.Group(); pan.add(n); n.position.set(x,300,SCREW_Z);
+  mk(Box(24,28,24),M.petg,'Somun bloğu (PETG), vida üzerinde yukarı aşağı gider',n);
+  mk(CylY(11,5),M.brass,'T8 anti-backlash somun',n,0,-16,0);
+  mk(CylX(4,16),M.steel,'Mafsal pimi Ø8 + F688 rulman',n,-s*16,0,0);
+  nuts.push(n);
+});
+
+/* ---------- tilt group (head), origin = pivot ---------- */
+const tilt = new THREE.Group(); tilt.position.copy(PIV); pan.add(tilt);
+const P_HEAD = 'Sigma profil 20x20, kare kafa çerçevesi';
+const yB = Y0, yT = H_T-10, zB = 14, zF = H_F-10;
+[yB,yT].forEach(y=>[zB,zF].forEach(z=>mk(Box(2*HX-20,20,20),M.alu,P_HEAD,tilt,0,y,z)));
+[-HX,HX].forEach(x=>[zB,zF].forEach(z=>mk(Box(20,yT-yB-20,20),M.alu,P_HEAD,tilt,x,(yB+yT)/2,z)));
+[-HX,HX].forEach(x=>[yB,yT].forEach(y=>mk(Box(20,20,H_F-4),M.alu,P_HEAD,tilt,x,y,(H_F+4)/2)));
+[-1,1].forEach(s=>{
+  mk(Box(6,34,46),M.steel,'Arka menteşe kulağı (kafaya cıvatalı)',tilt,s*(HX+13),8,14);
+  mk(CylX(13,6,32),M.steel,'Arka menteşe kulağı (kafaya cıvatalı)',tilt,s*(HX+13),0,0);
+});
+
+const sliders = [];
+[-1,1].forEach(s=>{
+  const sg = new THREE.Group(); tilt.add(sg); sg.position.set(s*(HX+15),Y0,D_ARM);
+  mk(Box(10,30,46),M.petg,'Kayar mafsal bloğu, alt profilin kanalında kayar',sg);
+  mk(CylX(9,7),M.cap,'F688 rulman (mafsal)',sg,s*7,0,0);
+  sliders.push(sg);
+});
+
+[-1,1].forEach(s=>mk(Box(3,yT-34,H_F-40),M.smoke,'Kafa yan paneli (füme akrilik)',tilt,s*(HX+11.5),(yT+34)/2,H_F/2));
+/* wheel carrier plates inside the frame */
+[-1,1].forEach(s=>mk(Box(6,yT-yB-20,150),M.plate,'Flywheel taşıyıcı plaka, 6 mm',tilt,s*(HX-13),(yB+yT)/2,205));
+
+/* front panel */
+(function(){
+  const sh = new THREE.Shape();
+  sh.moveTo(-HX+10,yB+10); sh.lineTo(HX-10,yB+10); sh.lineTo(HX-10,yT-10); sh.lineTo(-HX+10,yT-10); sh.closePath();
+  const h = new THREE.Path(); h.absarc(0,BALL_Y,44,0,Math.PI*2,true); sh.holes.push(h);
+  const g = new THREE.ExtrudeGeometry(sh,{depth:3,bevelEnabled:false,curveSegments:40});
+  mk(g,M.panel,'Ön panel, namlu deliği Ø88',tilt,0,0,H_F-3);
+})();
+
+const wheels = [];
+[BALL_Y+79.5,BALL_Y-79.5].forEach((y,i)=>{
+  const g = new THREE.Group(); g.position.set(0,y,205); tilt.add(g);
+  mk(CylX(50,30,48),M.rubber,'Flywheel Ø100 ('+(i?'alt':'üst')+')',g);
+  mk(CylX(16,32,24),M.hub,'Flywheel göbeği',g);
+  for(let k=0;k<4;k++){ const sp=mk(Box(31,6,70),M.hub,'Flywheel göbeği',g); sp.rotation.x=k*Math.PI/4; }
+  wheels.push(g);
+  mk(CylX(4,2*HX-26),M.steel,'Flywheel mili Ø8',tilt,0,y,205);
+  mk(CylX(21,67,32),M.motor,'775 DC motor, çerçeve içinde (BTS7960)',tilt,60,y,205);
+  mk(CylX(15,6,32),M.cap,'775 DC motor, çerçeve içinde (BTS7960)',tilt,96,y,205);
+});
+
+/* ball channel, magazine, feeder (all inside the frame) */
+mk(Box(72,4,140),M.plate,'Top kanalı',tilt,0,BALL_Y-36,85);
+[-37,37].forEach(x=>mk(Box(4,22,140),M.plate,'Top kanalı kenarı',tilt,x,BALL_Y-25,85));
+mk(CylY(38,170,36,true),M.acrylic,'Top magazini (akrilik boru Ø76)',tilt,0,BALL_Y+35+85,70);
+mk(annulus(46,37,6),M.petg,'Magazin ağzı',tilt,0,BALL_Y+35+170+6,70);
+[BALL_Y,BALL_Y+68,BALL_Y+136,BALL_Y+204].forEach(y=>mk(new THREE.SphereGeometry(33.5,32,20),M.ball,'Tenis topu Ø67',tilt,0,y,70));
+mk(Box(40,42,42),M.motor,'Besleme motoru NEMA 17, çerçeve içinde (TB6600)',tilt,-80,BALL_Y,70);
+mk(CylX(3,40),M.steel,'Besleme motoru mili',tilt,-48,BALL_Y,70);
+mk(CylX(26,6,6),M.petg,'Besleme çarkı (yıldız)',tilt,-42,BALL_Y,70);
+
+const muzzle = new THREE.Object3D(); muzzle.position.set(0,BALL_Y,MUZZLE_Z); tilt.add(muzzle);
+const muzzleAhead = new THREE.Object3D(); muzzleAhead.position.set(0,BALL_Y,MUZZLE_Z+1); tilt.add(muzzleAhead);
+
+/* ---------- trajectory line ---------- */
+const TR_N = 300;
+const trGeo = new THREE.BufferGeometry();
+trGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TR_N*3),3));
+const trMat = new THREE.LineDashedMaterial({color:0x2a5f9e,dashSize:60,gapSize:40});
+const trLine = new THREE.Line(trGeo,trMat); trLine.frustumCulled=false; scene.add(trLine);
+const landMark = new THREE.Mesh(new THREE.RingGeometry(80,110,40), new THREE.MeshBasicMaterial({color:0x2a5f9e,side:THREE.DoubleSide}));
+landMark.rotation.x=-Math.PI/2; landMark.position.y=1; scene.add(landMark);
+trLine.visible = false; landMark.visible = false;
+
+/* ---------- state ---------- */
+const st = {pan:0, tilt:15, speed:22, spin:true};
+const cur = {pan:0, tilt:15};
+const deg = Math.PI/180;
+
+function sliderLocalZ(th){ return (D_ARM + Y0*Math.sin(th))/Math.cos(th); }
+function nutY(th){ return PIV.y + Y0*Math.cos(th) + sliderLocalZ(th)*Math.sin(th); }
+const NUT0 = nutY(0);
+function applyPose(){
+  const th = cur.tilt*deg;
+  pan.rotation.y = -cur.pan*deg;
+  pinGroup.rotation.y = -cur.pan*deg*7.5;
+  tilt.rotation.x = -th;
+  const ny = nutY(th);
+  nuts.forEach(n=>{ n.position.y = ny; });
+  sliders.forEach(sg=>{ sg.position.z = sliderLocalZ(th); });
+}
+
+const $ = id => document.getElementById(id);
+const g = 9.81;
+function updateTrajectory(){
+  scene.updateMatrixWorld(true);
+  const p0 = muzzle.getWorldPosition(new THREE.Vector3());
+  const p1 = muzzleAhead.getWorldPosition(new THREE.Vector3());
+  const d = p1.sub(p0).normalize();
+  const v = st.speed*1000, gm = g*1000;
+  const vel = d.clone().multiplyScalar(v);
+  const h = p0.y/1000;
+  const vy = vel.y/1000;
+  const tf = (vy + Math.sqrt(vy*vy + 2*g*h))/g;
+  const arr = trGeo.attributes.position.array;
+  for(let i=0;i<TR_N;i++){
+    const t = tf*i/(TR_N-1);
+    arr[i*3]   = p0.x + vel.x*t;
+    arr[i*3+1] = Math.max(0, p0.y + vel.y*t - .5*gm*t*t);
+    arr[i*3+2] = p0.z + vel.z*t;
+  }
+  trGeo.attributes.position.needsUpdate = true; trLine.computeLineDistances();
+  const lx = p0.x + vel.x*tf, lz = p0.z + vel.z*tf;
+  landMark.position.set(lx,1,lz);
+  $('rH').textContent = Math.round(p0.y)+' mm';
+  $('rD').textContent = (Math.hypot(lx,lz)/1000).toFixed(1)+' m';
+  $('rX').textContent = (-lx/1000).toFixed(2)+' m';
+  return {p0,vel};
+}
+function updateReadouts(){
+  const th = st.tilt*deg;
+  const travel = nutY(th)-NUT0;
+  $('rL').textContent = travel.toFixed(1)+' mm';
+  $('rR').textContent = sliderLocalZ(th).toFixed(1)+' mm';
+  $('rTs').textContent = Math.round(travel/8*200*4).toLocaleString('tr-TR');
+  $('rPs').textContent = Math.round(st.pan/(1.8/7.5/8)).toLocaleString('tr-TR');
+}
+
+/* ---------- controls ---------- */
+function bind(id,key,fmt){
+  const el=$(id), out=$(id+'Out');
+  const upd=()=>{ st[key]=parseFloat(el.value); out.textContent=fmt(st[key]); updateReadouts(); };
+  el.addEventListener('input',upd); upd();
+}
+bind('pan','pan',v=>(v>0?'+':'')+v.toFixed(1)+'°');
+bind('tilt','tilt',v=>v.toFixed(1)+'°');
+bind('speed','speed',v=>v.toFixed(1)+' m/s');
+
+$('spin').addEventListener('click',e=>{ st.spin=!st.spin; e.currentTarget.setAttribute('aria-pressed',String(st.spin)); });
+$('home').addEventListener('click',()=>{
+  [['pan',0],['tilt',0]].forEach(([id,v])=>{ $(id).value=v; $(id).dispatchEvent(new Event('input')); });
+});
+
+const shots = [];
+$('fire').addEventListener('click',()=>{
+  const {p0,vel} = updateTrajectory();
+  const m = new THREE.Mesh(new THREE.SphereGeometry(33.5,24,16), M.ball);
+  m.position.copy(p0); scene.add(m);
+  shots.push({m,v:vel.clone(),rest:0});
+});
+
+/* camera views */
+const TARGET = new THREE.Vector3(0,280,0);
+const VIEWS = {
+  iso:[1150,800,1300], side:[1800,330,20], top:[0,2100,20], back:[-650,750,-1700]
+};
+function setView(k){ const p=VIEWS[k]; camera.position.set(p[0],p[1],p[2]); controls.target.copy(TARGET); controls.update(); }
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{ setGear(false); setView(b.dataset.view); }));
+
+/* gear focus mode: ghost the plates above/below the ring, gentle pan sweep */
+const ghostMat = new THREE.MeshStandardMaterial({color:0xb4bdc5,metalness:.3,roughness:.4,transparent:true,opacity:.12,depthWrite:false});
+const ghosted = [basePlate, platPlate];
+let gearOn = false, demoT = 0;
+function setGear(on){
+  gearOn = on;
+  $('gearBtn').setAttribute('aria-pressed',String(on));
+  $('gearCap').hidden = !on;
+  ghosted.forEach(m=>{ m.material = on ? ghostMat : M.plate; });
+  baseSkins.forEach(m=>{ m.visible = !on; });
+  if(on){
+    camera.position.set(250,235,330); controls.target.set(0,162,-20); controls.update();
+    demoT = 0;
+  }
+}
+$('gearBtn').addEventListener('click',()=>setGear(!gearOn));
+/* controls dock over the full-screen model */
+(function(){
+  const dock=$('dock'), btns=dock.querySelector('.dock-btns');
+  ['pan','tilt','speed'].forEach(id=>dock.insertBefore($(id).closest('.ctrl'),btns));
+  btns.append($('fire'),$('spin'),$('gearBtn'));
+})();
+$('pan').addEventListener('pointerdown',()=>{ if(gearOn){ gearOn=false; $('gearBtn').setAttribute('aria-pressed','false'); setGear(false); } });
+setView('iso');
+
+/* ---------- picking ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function pick(cx,cy){ return;
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((cx-r.left)/r.width)*2-1, -((cy-r.top)/r.height)*2+1);
+  ray.setFromCamera(ndc,camera);
+  const hit = ray.intersectObjects(pickables,false)[0];
+  if(hit){ tip.textContent = hit.object.userData.part; tip.style.left=(cx-r.left)+'px'; tip.style.top=(cy-r.top)+'px'; tip.hidden=false; }
+  else tip.hidden = true;
+}
+let down=null, dragging=false;
+renderer.domElement.addEventListener('pointerdown',e=>{ down=[e.clientX,e.clientY]; dragging=false; });
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(down && Math.hypot(e.clientX-down[0],e.clientY-down[1])>4){ dragging=true; tip.hidden=true; }
+  if(e.pointerType==='mouse' && !down) pick(e.clientX,e.clientY);
+});
+renderer.domElement.addEventListener('pointerup',e=>{ if(!dragging) pick(e.clientX,e.clientY); down=null; });
+renderer.domElement.addEventListener('pointerleave',()=>{ if(!down) tip.hidden=true; });
+
+/* ---------- parts legend ---------- */
+const LEGEND = [
+  [M.alu,'Sigma profil 20x20, siyah eloksal','Gövde, kare kafa çerçevesi, iki tilt kulesi'],
+  [M.bright,'Pan yatağı','Ø25 boru mil, gövdede aralıklı iki 6005-2RS rulman'],
+  [M.petg,'3B baskı parçalar (PETG)','120 dişli iç halka, somun blokları, kayar mafsal blokları, besleme çarkı'],
+  [M.steel,'Çelik parçalar','Pinyon, arka menteşe kulakları, mafsal pimleri, motor braketleri'],
+  [M.iron,'KP08 yatak (4x)','İkisi arka menteşede, ikisi vidaların alt ucunda'],
+  [M.motor,'Step motorlar (NEMA 17)','Pan 1, tilt 2 (sabit, eş zamanlı), besleme 1'],
+  [M.screw,'T8x8 trapez vida (2x)','Dikey, kafanın iki yanında, menteşenin 150 mm önünde'],
+  [M.rubber,'Çift flywheel Ø100','Üst ve alt teker; 775 motorlar çerçevenin içinde'],
+  [M.acrylic,'Top magazini','Kafa çerçevesinin içinde, alçak; yıldız çarkla tek tek besler'],
+  [M.smoke,'Füme akrilik paneller','Gövde ve kafa yanları, içi görünür kalır'],
+  [M.batt,'Akü','12 V, şalter + 30 A sigorta ile kesilir'],
+  [M.abs,'Elektronik kutusu','ESP32, sürücüler, regülatörler, seviye çevirici'],
+];
+const ul = $('parts');
+LEGEND.forEach(([mat,name,desc])=>{
+  const li=document.createElement('li');
+  const sw=document.createElement('i'); sw.className='sw'; sw.style.background='#'+mat.color.getHexString();
+  if(mat.transparent) sw.style.opacity=mat===M.smoke?'.8':'.6';
+  const t=document.createElement('div'); t.innerHTML='<b></b><br><span></span>';
+  t.querySelector('b').textContent=name; t.querySelector('span').textContent=desc;
+  li.append(sw,t); ul.append(li);
+});
+
+/* ---------- theme ---------- */
+function applyTheme(){
+  const sc = new THREE.Color(css('--scene')||'#e2e7ec');
+  scene.background = sc;
+  scene.fog = new THREE.Fog(sc, 6000, 26000);
+  ground.material.color.set(sc).offsetHSL(0,0,-0.025);
+  if(grid){ scene.remove(grid); grid.geometry.dispose(); }
+  grid = new THREE.GridHelper(12000,60,new THREE.Color(css('--grid')),new THREE.Color(css('--grid')));
+  grid.position.y=-10; grid.material.transparent=true; grid.material.opacity=.7; scene.add(grid);
+  const acc = new THREE.Color(css('--accent')||'#2a5f9e');
+  trMat.color.copy(acc); landMark.material.color.copy(acc);
+  edgeMat.color.set(css('--edge')||'#1d262e');
+}
+applyTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* ---------- resize ---------- */
+function resize(){
+  const w=stage.clientWidth, h=stage.clientHeight;
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage); resize();
+
+/* ---------- loop ---------- */
+let last = performance.now();
+function frame(now){
+  const dt = Math.min(.05,(now-last)/1000); last = now;
+  const k = reduce ? 1 : 1-Math.exp(-dt*6);
+  if(gearOn && !reduce){
+    demoT += dt;
+    const v = Math.round(20*Math.sin(demoT*0.7)*2)/2;
+    if(v !== st.pan){ $('pan').value = v; $('pan').dispatchEvent(new Event('input')); }
+  }
+  cur.pan += (st.pan-cur.pan)*k; cur.tilt += (st.tilt-cur.tilt)*k;
+  if(gearOn){
+    $('gRing').textContent = (cur.pan>0?'+':'')+cur.pan.toFixed(1).replace('.',',')+'°';
+    $('gPin').textContent = Math.round(cur.pan*7.5)+'°';
+  }
+  applyPose(); updateTrajectory();
+  if(st.spin && !reduce){
+    const w = st.speed*0.9*dt;
+    wheels[0].rotation.x += w; wheels[1].rotation.x -= w;
+  }
+  const slow = 0.3, gm = g*1000;
+  for(let i=shots.length-1;i>=0;i--){
+    const s = shots[i], sdt = dt*slow;
+    if(s.rest===0){
+      s.v.y -= gm*sdt; s.m.position.addScaledVector(s.v,sdt);
+      if(s.m.position.y<=33.5){ s.m.position.y=33.5; s.rest=0.0001; }
+    } else {
+      s.rest += dt;
+      if(s.rest>1.6){ scene.remove(s.m); s.m.geometry.dispose(); shots.splice(i,1); }
+    }
+  }
+  controls.update();
+  renderer.render(scene,camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
