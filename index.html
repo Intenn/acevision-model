@@ -79,6 +79,7 @@ tr:last-child td{border-bottom:0}
 .dock-btns{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
 .dock .btn{font-size:14px;padding:6px 12px}
 .dock .chip{font-size:14px;padding:6px 12px}
+.dock .btn:disabled,.dock input:disabled{opacity:.45;cursor:not-allowed}
 @media (max-width:560px){ .dock{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:900px){
   .main{grid-template-columns:minmax(0,1fr)}
@@ -1238,6 +1239,7 @@ const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).
 /* ---------- renderer, scene, camera ---------- */
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 stage.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(32,1,5,80000);
@@ -1247,12 +1249,25 @@ controls.maxPolarAngle = Math.PI*0.495;
 controls.autoRotate = !reduce; controls.autoRotateSpeed = 0.6;
 controls.addEventListener('start',()=>{ controls.autoRotate = false; }); controls.minDistance = 300; controls.maxDistance = 9000;
 
-scene.add(new THREE.HemisphereLight(0xffffff,0x8a939c,.75));
-const key = new THREE.DirectionalLight(0xffffff,.85); key.position.set(900,1600,1200); scene.add(key);
-const fill = new THREE.DirectionalLight(0xffffff,.35); fill.position.set(-1200,600,-900); scene.add(fill);
+scene.add(new THREE.HemisphereLight(0xffffff,0x8a939c,.42));
+const key = new THREE.DirectionalLight(0xffffff,.75); key.position.set(900,1600,1200); scene.add(key);
+key.castShadow = true; key.shadow.mapSize.set(2048,2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 1.5;
+Object.assign(key.shadow.camera,{left:-1100,right:1100,top:1100,bottom:-1100,near:200,far:5000}); key.shadow.camera.updateProjectionMatrix();
+const fill = new THREE.DirectionalLight(0xffffff,.28); fill.position.set(-1200,600,-900); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff,.22); rim.position.set(-300,900,-1600); scene.add(rim);
+/* studio environment for reflections */
+(function(){
+  const pm = new THREE.PMREMGenerator(renderer), es = new THREE.Scene();
+  es.add(new THREE.Mesh(new THREE.BoxGeometry(60,60,60), new THREE.MeshBasicMaterial({color:0x5d636a, side:THREE.BackSide})));
+  const box=(w,h,x,y,z,c)=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({color:c,side:THREE.DoubleSide})); m.position.set(x,y,z); m.lookAt(0,0,0); es.add(m); };
+  box(40,18,0,29,0,0xffffff); box(16,26,28,6,12,0xf2f4f6); box(16,26,-28,4,-10,0xd9dde1); box(30,8,0,10,-28,0xe8ebee);
+  scene.environment = pm.fromScene(es,0.035,0.1,200).texture; pm.dispose();
+})();
 
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(30000,30000), new THREE.MeshBasicMaterial({color:0xffffff}));
 ground.rotation.x = -Math.PI/2; ground.position.y = -10.5; scene.add(ground);
+const shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(8000,8000), new THREE.ShadowMaterial({opacity:.2}));
+shadowPlane.rotation.x = -Math.PI/2; shadowPlane.position.y = -10.2; shadowPlane.receiveShadow = true; scene.add(shadowPlane);
 let grid = null;
 
 /* ---------- materials ---------- */
@@ -1340,7 +1355,10 @@ const H_T = 314, H_F = 294;                 // head outer top / front (local)
 const BALL_Y = 160, MUZZLE_Z = H_F+2;
 
 /* ---------- fixed base ---------- */
-const base = new THREE.Group(); scene.add(base);
+const AXLE = new THREE.Vector3(0,51.5,-130);
+const rigPivot = new THREE.Group(); rigPivot.position.copy(AXLE); scene.add(rigPivot);
+const rig = new THREE.Group(); rig.position.copy(AXLE).multiplyScalar(-1); rigPivot.add(rig);
+const base = new THREE.Group(); rig.add(base);
 const P_FRAME = 'Sigma profil 20x20 (gövde iskeleti)';
 [-1,1].forEach(sx=>[-1,1].forEach(sz=> mk(Box(20,130,20),M.alu,P_FRAME,base,sx*200,85,sz*150)));
 [-150,150].forEach(z=>mk(Box(420,20,20),M.alu,P_FRAME,base,0,10,z));
@@ -1350,8 +1368,7 @@ mk(Box(380,4,280),M.abs,'Alt plaka',base,0,22,0);
 mk(Box(160,125,170),M.batt,'Akü 12 V (kuru ya da LiFePO4)',base,-110,86.5,-10);
 [-140,-80].forEach(x=>mk(CylY(6,10),M.red,'Akü kutup başı',base,x,154,-60));
 mk(Box(140,70,170),M.abs,'Elektronik kutusu: ESP32, 4x TB6600, 2x BTS7960, LM2596, 74HCT541',base,120,59,-10);
-mk(Box(46,46,10),M.abs,'Akü şalteri + 30 A sigorta',base,150,100,165);
-mk(CylZ(13,22),M.red,'Akü şalteri (acil kesme)',base,150,100,178);
+const legacy = [mk(Box(46,46,10),M.abs,'Akü şalteri + 30 A sigorta',base,150,100,165), mk(CylZ(13,22),M.red,'Akü şalteri (acil kesme)',base,150,100,178)];
 /* pan bearing: housing with two 6005-2RS, Ø25 tube shaft */
 const PIN_OFF = 52;  // 120T ring (r60) - 16T pinion (r8)
 mk(Box(42,40,42),M.motor,'Pan motoru NEMA 17 (TB6600)',base,0,129,-PIN_OFF);
@@ -1368,10 +1385,11 @@ mk(Box(14,6,10),M.motor,'Pan limit switch',base,72,161,-30);
 const baseSkins = [];
 [-161,161].forEach(z=>baseSkins.push(mk(Box(400,110,3),M.smoke,'Gövde yan paneli (füme akrilik)',base,0,85,z)));
 [-211,211].forEach(x=>baseSkins.push(mk(Box(3,110,300),M.smoke,'Gövde yan paneli (füme akrilik)',base,x,85,0)));
-[-1,1].forEach(sx=>[-1,1].forEach(sz=>mk(CylY(16,10,24),M.rubber,'Kauçuk ayak',base,sx*200,-5,sz*150)));
+[-1,1].forEach(sx=>mk(CylY(18,10,28),M.rubber,'Kauçuk ön ayak',base,sx*185,-5,140));
+legacy.forEach(m=>baseSkins.push(m));
 
 /* ---------- pan group (rotating platform) ---------- */
-const pan = new THREE.Group(); scene.add(pan);
+const pan = new THREE.Group(); rig.add(pan);
 const platPlate = mk(roundedPlate(430,300,40,8),M.plate,'Döner platform, 8 mm alüminyum, köşeleri R40',pan,0,174,-15);
 mk(CylY(12.5,78,32),M.steel,'Pan mili, Ø25 boru (kablolar içinden geçer)',pan,0,135,0);
 mk(annulus(25,12.5,6),M.bright,'Mil flanşı, platforma cıvatalı',pan,0,166,0);
@@ -1458,8 +1476,8 @@ const wheels = [];
 /* ball channel, magazine, feeder (all inside the frame) */
 mk(Box(72,4,140),M.plate,'Top kanalı',tilt,0,BALL_Y-36,85);
 [-37,37].forEach(x=>mk(Box(4,22,140),M.plate,'Top kanalı kenarı',tilt,x,BALL_Y-25,85));
-mk(CylY(38,170,36,true),M.acrylic,'Top magazini (akrilik boru Ø76)',tilt,0,BALL_Y+35+85,70);
-mk(annulus(46,37,6),M.petg,'Magazin ağzı',tilt,0,BALL_Y+35+170+6,70);
+mk(CylY(38,215,36,true),M.acrylic,'Top magazini (akrilik boru Ø76)',tilt,0,BALL_Y+35+107.5,70);
+mk(annulus(44,37,6),M.panel,'Magazin ağzı',tilt,0,BALL_Y+35+215+6,70);
 [BALL_Y,BALL_Y+68,BALL_Y+136,BALL_Y+204].forEach(y=>mk(new THREE.SphereGeometry(33.5,32,20),M.ball,'Tenis topu Ø67',tilt,0,y,70));
 mk(Box(40,42,42),M.motor,'Besleme motoru NEMA 17, çerçeve içinde (TB6600)',tilt,-80,BALL_Y,70);
 mk(CylX(3,40),M.steel,'Besleme motoru mili',tilt,-48,BALL_Y,70);
@@ -1467,6 +1485,204 @@ mk(CylX(26,6,6),M.petg,'Besleme çarkı (yıldız)',tilt,-42,BALL_Y,70);
 
 const muzzle = new THREE.Object3D(); muzzle.position.set(0,BALL_Y,MUZZLE_Z); tilt.add(muzzle);
 const muzzleAhead = new THREE.Object3D(); muzzleAhead.position.set(0,BALL_Y,MUZZLE_Z+1); tilt.add(muzzleAhead);
+
+/* =================== ÜRÜN KAPLAMASI =================== */
+const SK = {
+  white: new THREE.MeshPhysicalMaterial({color:0xeef0f2,roughness:.36,metalness:0,clearcoat:.7,clearcoatRoughness:.22}),
+  graph: new THREE.MeshPhysicalMaterial({color:0x2a2f35,roughness:.5,metalness:.05,clearcoat:.3,clearcoatRoughness:.4}),
+  accent: new THREE.MeshPhysicalMaterial({color:0xc6e03a,roughness:.35,metalness:0,clearcoat:.6}),
+  glow: new THREE.MeshBasicMaterial({color:0xd9f24c}),
+  glass: new THREE.MeshPhysicalMaterial({color:0x0a0d10,roughness:.08,metalness:.1,clearcoat:1}),
+  alu: new THREE.MeshStandardMaterial({color:0xcfd5da,roughness:.28,metalness:.85}),
+  tire: new THREE.MeshStandardMaterial({color:0x17191c,roughness:.85,metalness:0}),
+  safety: new THREE.MeshStandardMaterial({color:0xf2c200,roughness:.45}),
+  red: new THREE.MeshPhysicalMaterial({color:0xd42a22,roughness:.3,clearcoat:.8}),
+  smokeLid: new THREE.MeshPhysicalMaterial({color:0x1a2026,roughness:.05,metalness:0,transparent:true,opacity:.45,clearcoat:1,depthWrite:false})
+};
+const skinParts = [];
+function sk(geo, mat, parent, x=0,y=0,z=0, inSkin=true){
+  const m = new THREE.Mesh(geo,mat); m.position.set(x,y,z); m.castShadow = true; m.receiveShadow = true;
+  m.userData.part = 'Dış kaplama'; parent.add(m); if(inSkin) skinParts.push(m); return m;
+}
+/* rounded box, plan-rounded (x,z) with bevelled edges; centered */
+function rbox(w,h,d,rc=12,b=3){
+  const W=w-2*b, D=d-2*b, r=Math.max(.5,Math.min(rc-b, W/2-.1, D/2-.1));
+  const s=new THREE.Shape(), x=-W/2, y=-D/2;
+  s.moveTo(x+r,y); s.lineTo(x+W-r,y); s.absarc(x+W-r,y+r,r,-Math.PI/2,0,false);
+  s.lineTo(x+W,y+D-r); s.absarc(x+W-r,y+D-r,r,0,Math.PI/2,false);
+  s.lineTo(x+r,y+D); s.absarc(x+r,y+D-r,r,Math.PI/2,Math.PI,false);
+  s.lineTo(x,y+r); s.absarc(x+r,y+r,r,Math.PI,Math.PI*1.5,false);
+  const g = new THREE.ExtrudeGeometry(s,{depth:Math.max(.2,h-2*b),bevelEnabled:true,bevelSize:b,bevelThickness:b,bevelSegments:4,curveSegments:10});
+  g.rotateX(Math.PI/2); g.translate(0,(h-2*b)/2,0); g.computeVertexNormals(); return g;
+}
+const rboxX = (t,h,d,rc,b) => { const g=rbox(h,t,d,rc,b); g.rotateZ(Math.PI/2); return g; };  // thin in x
+const rboxZ = (w,h,t,rc,b) => { const g=rbox(w,t,h,rc,b); g.rotateX(Math.PI/2); return g; };  // thin in z
+function canvasTex(w,h,draw){
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const t=new THREE.CanvasTexture(c); t.anisotropy=8; t.userData={c,draw};
+  draw(c.getContext('2d'),w,h); return t;
+}
+const texes=[];
+function logo(onDark){
+  return canvasTex(1024,200,(x,w,h)=>{
+    x.clearRect(0,0,w,h);
+    x.font = "700 150px 'Barlow Condensed','Arial Narrow',Arial,sans-serif"; x.textBaseline='middle';
+    const a='ACE', b='VISION'; const wa=x.measureText(a).width, wb=x.measureText(b).width, gap=10;
+    const x0=(w-(wa+gap+wb))/2;
+    x.fillStyle = onDark ? '#d9f24c' : '#8fa818'; x.fillText(a,x0,h/2+6);
+    x.fillStyle = onDark ? '#f1f3f5' : '#2a2f35'; x.fillText(b,x0+wa+gap,h/2+6);
+  });
+}
+function decal(tex,w,h,parent,x,y,z,ry){
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,toneMapped:false}));
+  m.position.set(x,y,z); m.rotation.y=ry; parent.add(m); skinParts.push(m); texes.push(tex); return m;
+}
+
+/* --- base shell --- */
+sk(rbox(452,122,352,46,10),SK.white,base,0,97,0);
+sk(rbox(458,46,358,48,9),SK.graph,base,0,23,0);
+sk(rboxZ(300,62,3,14,1.2),SK.graph,base,0,104,176.5);
+decal(logo(true),240,47,base,0,104,178.3,0);
+sk(rboxZ(300,3,2,1,.8),SK.glow,base,0,66,177.3);
+/* rear: touchscreen */
+sk(rboxZ(184,104,8,14,3),SK.graph,base,0,82,-178);
+const screenTex = canvasTex(640,360,drawScreen); texes.push(screenTex);
+const screen = new THREE.Mesh(new THREE.PlaneGeometry(166,93), new THREE.MeshBasicMaterial({map:screenTex,toneMapped:false}));
+screen.position.set(0,82,-182.2); screen.rotation.y=Math.PI; base.add(screen); skinParts.push(screen);
+sk(CylZ(4,3,20),SK.glow,base,74,33,-182);   // status LED
+/* right side: emergency stop, left side: key switch + charge port */
+sk(CylX(26,8,32),SK.safety,base,230,96,30);
+sk(CylX(10,10,20),SK.graph,base,238,96,30);
+sk(CylX(19,12,32),SK.red,base,248,96,30);
+sk(rboxX(4,60,90,12,1.5),SK.graph,base,-227,96,40);
+sk(CylX(9,8,24),SK.alu,base,-231,108,22);
+sk(rboxX(4,14,24,4,1),SK.glass,base,-230,82,62);
+
+/* --- wheels (suitcase style, rear) --- */
+const wheelMeshes = [];
+[-1,1].forEach(s=>{
+  const wg = new THREE.Group(); wg.position.set(s*251,AXLE.y,AXLE.z); base.add(wg); wheelMeshes.push(wg);
+  const prof=[[44,-19],[55,-19],[59.5,-17.5],[62,-13],[62,13],[59.5,17.5],[55,19],[44,19]].map(([r,y])=>new THREE.Vector2(r,y));
+  const tg=new THREE.LatheGeometry(prof,56); tg.rotateZ(Math.PI/2);
+  sk(tg,SK.tire,wg,0,0,0,false);
+  sk(CylX(44,32,48),SK.alu,wg,0,0,0,false);
+  for(let k=0;k<5;k++){ const sp=sk(Box(36,8,40),SK.graph,wg,s*1,0,0,false); sp.rotation.x=k*Math.PI*2/5; sp.geometry.translate(0,0,20); }
+  sk(CylX(15,38,32),SK.graph,wg,0,0,0,false);
+  sk(CylX(7,40,20),SK.accent,wg,0,0,0,false);
+  sk(rboxX(10,74,104,16,3),SK.graph,base,s*230,AXLE.y+4,AXLE.z,false);   // axle boss
+});
+
+/* --- telescopic pull handle (suitcase style) --- */
+const HZ = -188, HTX = 150;
+[-1,1].forEach(s=>sk(rbox(22,154,20,6,2.5),SK.graph,base,s*HTX,80,HZ,false));
+const stages=[];
+[[15,15],[13,13],[11,11],[9,9]].forEach(([w,d],i)=>{
+  const pair=[-1,1].map(s=>sk(Box(w,150,d),SK.alu,base,s*HTX,80,HZ,false));
+  stages.push(pair);
+});
+const grip = new THREE.Group(); base.add(grip);
+sk(rbox(334,24,30,12,6),SK.graph,grip,0,0,HZ,false);
+sk(rbox(200,6,24,3,2),SK.tire,grip,0,13,HZ,false);
+sk(rbox(46,5,14,3,1.5),SK.accent,grip,0,-11,HZ+8,false);
+function setHandle(e){  // e: 0 collapsed .. 1 extended
+  stages.forEach((pair,i)=>pair.forEach(m=>{ m.position.y = 80 + e*(i+1)*125; }));
+  grip.position.y = 155 + 4*125*e - 4;
+}
+setHandle(0);
+
+/* --- tilt tower shrouds (on pan platform) --- */
+[-1,1].forEach(s=>{
+  sk(rboxX(6,266,104,16,2.5),SK.white,pan,s*212,309,50);
+  sk(rboxZ(46,266,6,10,2),SK.white,pan,s*191,309,100);
+  sk(rboxZ(46,266,6,10,2),SK.white,pan,s*191,309,0);
+  sk(rbox(50,64,108,16,7),SK.graph,pan,s*192,471,50);
+  sk(rbox(52,4,110,16,1.5),SK.glow,pan,s*192,437,50);
+});
+
+/* --- head shell (in tilt frame) --- */
+sk(rbox(334,10,308,22,4),SK.white,tilt,0,319,147);
+[-1,1].forEach(s=>sk(rboxX(6,286,308,22,2.5),SK.white,tilt,s*164,176,147));
+sk(rboxZ(322,306,6,10,2.5),SK.white,tilt,0,161,-3);
+sk(rbox(316,4,268,10,1.5),SK.graph,tilt,0,1,166);
+(function(){   // front fascia with muzzle
+  const W=334,H=314,r=22, s=new THREE.Shape(), x=-W/2, y=8;
+  s.moveTo(x+r,y); s.lineTo(x+W-r,y); s.absarc(x+W-r,y+r,r,-Math.PI/2,0,false);
+  s.lineTo(x+W,y+H-r); s.absarc(x+W-r,y+H-r,r,0,Math.PI/2,false);
+  s.lineTo(x+r,y+H); s.absarc(x+r,y+H-r,r,Math.PI/2,Math.PI,false);
+  s.lineTo(x,y+r); s.absarc(x+r,y+r,r,Math.PI,Math.PI*1.5,false);
+  const h=new THREE.Path(); h.absarc(0,BALL_Y,46,0,Math.PI*2,true); s.holes.push(h);
+  const g=new THREE.ExtrudeGeometry(s,{depth:6,bevelEnabled:true,bevelSize:3,bevelThickness:3,bevelSegments:4,curveSegments:40});
+  sk(g,SK.graph,tilt,0,0,301);
+})();
+const ringG = new THREE.TorusGeometry(51,5.5,20,72); sk(ringG,SK.accent,tilt,0,BALL_Y,312);
+sk(CylZ(46,28,48),SK.glass,tilt,0,BALL_Y,298).material = new THREE.MeshStandardMaterial({color:0x0b0e11,roughness:.6,side:THREE.BackSide});
+const ledBar = sk(rboxZ(210,5,2,2,.8),SK.glow,tilt,0,290,311.6);
+sk(rboxZ(210,5,2,2,.8),SK.glow,tilt,0,30,311.6);
+[-1,1].forEach(s=>decal(logo(false),118,23,tilt,s*167.4,262,58,s*Math.PI/2));
+[-1,1].forEach(s=>sk(rboxX(1.5,3,112,2,.6),SK.accent,tilt,s*167.4,244,58));
+/* rear vent grille */
+for(let i=0;i<6;i++) sk(rboxZ(150,6,2,3,.8),SK.graph,tilt,0,250-i*16,-6.6);
+/* hopper collar + smoked lid on top */
+sk(annulus(54,39,16),SK.graph,tilt,0,340,70);
+sk(annulus(56,52,2),SK.accent,tilt,0,341,70);
+const lidG = new THREE.SphereGeometry(42,40,16,0,Math.PI*2,0,Math.PI/2); lidG.scale(1,.55,1);
+sk(lidG,SK.smokeLid,tilt,0,416,70).castShadow=false;
+muzzle.position.z = 318; muzzleAhead.position.z = 319;
+
+/* --- touchscreen UI --- */
+function drawScreen(x,w,h){
+  const T = window.__acev || {speed:22,tilt:15,pan:0,transport:false,spin:true};
+  const g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,'#10161c'); g.addColorStop(1,'#070a0d');
+  x.fillStyle=g; x.fillRect(0,0,w,h);
+  const F = (wgt,sz)=>`${wgt} ${sz}px 'IBM Plex Sans','Segoe UI',Arial,sans-serif`;
+  const D = (sz)=>`700 ${sz}px 'Barlow Condensed','Arial Narrow',Arial,sans-serif`;
+  x.textBaseline='alphabetic';
+  x.fillStyle='#d9f24c'; x.font=D(34); x.fillText('ACE',24,48);
+  x.fillStyle='#e8ecef'; x.fillText('VISION',24+x.measureText('ACE').width+4,48);
+  // battery + wifi
+  x.strokeStyle='#e8ecef'; x.lineWidth=3; x.strokeRect(w-86,24,52,26); x.fillStyle='#e8ecef'; x.fillRect(w-33,31,5,12);
+  x.fillStyle='#d9f24c'; x.fillRect(w-82,28,38,18);
+  x.fillStyle='#9aa5ae'; x.font=F(500,20); x.textAlign='right'; x.fillText('%86',w-96,46);
+  x.strokeStyle='#9aa5ae'; x.lineWidth=3;
+  [10,18,26].forEach(r=>{ x.beginPath(); x.arc(w-170,50,r,-Math.PI*.75,-Math.PI*.25); x.stroke(); });
+  x.textAlign='left';
+  x.fillStyle='#232c34'; x.fillRect(24,66,w-48,2);
+  if(T.transport){
+    x.fillStyle='#d9f24c'; x.font=D(78); x.fillText('TAŞIMA MODU',24,180);
+    x.fillStyle='#9aa5ae'; x.font=F(500,24);
+    x.fillText('Kafa park konumunda · motorlar kilitli',24,226);
+    x.fillText('Kolu indirince atışa hazır',24,262);
+    return;
+  }
+  x.fillStyle='#f4f6f8'; x.font=D(150); x.fillText(String(Math.round(T.speed*3.6)),24,214);
+  const sw = x.measureText(String(Math.round(T.speed*3.6))).width;
+  x.fillStyle='#9aa5ae'; x.font=F(500,28); x.fillText('km/s',34+sw,206);
+  const tile=(lbl,val,ty)=>{ x.fillStyle='#151d24'; x.fillRect(w-236,ty,212,64);
+    x.fillStyle='#8b97a1'; x.font=F(600,15); x.fillText(lbl,w-222,ty+22);
+    x.fillStyle='#f4f6f8'; x.font=D(36); x.fillText(val,w-222,ty+56); };
+  tile('YÜKSELİŞ', T.tilt.toFixed(1).replace('.',',')+'°',84);
+  tile('YÖN', (T.pan>0?'+':'')+T.pan.toFixed(1).replace('.',',')+'°',156);
+  tile('MAGAZİN','4 top',228);
+  x.fillStyle = T.spin ? '#d9f24c' : '#3a454e'; x.beginPath(); x.roundRect ? x.roundRect(24,250,248,44,22) : x.rect(24,250,248,44); x.fill();
+  x.fillStyle = T.spin ? '#0b0f12' : '#c6ced4'; x.font=F(700,20); x.fillText(T.spin ? 'SERİ ATIŞ · FOREHAND' : 'BEKLEMEDE',44,279);
+  x.fillStyle='#5f6b75'; x.font=F(500,17); x.fillText('Telefon bağlı · UDP 4210',24,336);
+}
+function refreshScreen(){
+  window.__acev = {speed:st.speed, tilt:st.tilt, pan:st.pan, transport:tr.on, spin:st.spin};
+  drawScreen(screenTex.userData.c.getContext('2d'),640,360); screenTex.needsUpdate = true;
+}
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>{ texes.forEach(t=>{ const c=t.userData.c; t.userData.draw(c.getContext('2d'),c.width,c.height); t.needsUpdate=true; }); refreshScreen(); });
+
+/* --- skin + transport state --- */
+let skinOn = true;
+const tr = {on:false, ext:0, ang:0};
+function applySkin(){
+  const show = skinOn && !gearOnSafe();
+  skinParts.forEach(m=>{ m.visible = show; });
+  baseSkins.forEach(m=>{ m.visible = !show && !gearOnSafe(); });
+  if(!gearOnSafe()) platPlate.material = show ? SK.graph : M.plate;
+}
+function gearOnSafe(){ try { return gearOn; } catch(e){ return false; } }
 
 /* ---------- trajectory line ---------- */
 const TR_N = 300;
@@ -1535,20 +1751,21 @@ function updateReadouts(){
 /* ---------- controls ---------- */
 function bind(id,key,fmt){
   const el=$(id), out=$(id+'Out');
-  const upd=()=>{ st[key]=parseFloat(el.value); out.textContent=fmt(st[key]); updateReadouts(); };
+  const upd=()=>{ st[key]=parseFloat(el.value); out.textContent=fmt(st[key]); updateReadouts(); if(typeof refreshScreen==='function' && window.__acevReady) refreshScreen(); };
   el.addEventListener('input',upd); upd();
 }
 bind('pan','pan',v=>(v>0?'+':'')+v.toFixed(1)+'°');
 bind('tilt','tilt',v=>v.toFixed(1)+'°');
 bind('speed','speed',v=>v.toFixed(1)+' m/s');
 
-$('spin').addEventListener('click',e=>{ st.spin=!st.spin; e.currentTarget.setAttribute('aria-pressed',String(st.spin)); });
+$('spin').addEventListener('click',e=>{ st.spin=!st.spin; e.currentTarget.setAttribute('aria-pressed',String(st.spin)); refreshScreen(); });
 $('home').addEventListener('click',()=>{
   [['pan',0],['tilt',0]].forEach(([id,v])=>{ $(id).value=v; $(id).dispatchEvent(new Event('input')); });
 });
 
 const shots = [];
 $('fire').addEventListener('click',()=>{
+  if(tr.on || tr.ang<-0.5 || tr.ext>0.02) return;
   const {p0,vel} = updateTrajectory();
   const m = new THREE.Mesh(new THREE.SphereGeometry(33.5,24,16), M.ball);
   m.position.copy(p0); scene.add(m);
@@ -1556,9 +1773,9 @@ $('fire').addEventListener('click',()=>{
 });
 
 /* camera views */
-const TARGET = new THREE.Vector3(0,280,0);
+const TARGET = new THREE.Vector3(0,300,0);
 const VIEWS = {
-  iso:[1150,800,1300], side:[1800,330,20], top:[0,2100,20], back:[-650,750,-1700]
+  iso:[1250,760,1350], side:[1900,360,20], top:[0,2200,20], back:[-900,700,-1600]
 };
 function setView(k){ const p=VIEWS[k]; const f = camera.aspect<1 ? Math.min(1.7,0.75/camera.aspect) : 1; camera.position.set(p[0]*f,p[1]*f,p[2]*f); controls.target.copy(TARGET); controls.update(); }
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{ setGear(false); setView(b.dataset.view); }));
@@ -1573,6 +1790,7 @@ function setGear(on){
   $('gearCap').hidden = !on;
   ghosted.forEach(m=>{ m.material = on ? ghostMat : M.plate; });
   baseSkins.forEach(m=>{ m.visible = !on; });
+  applySkin();
   if(on){
     camera.position.set(250,235,330); controls.target.set(0,162,-20); controls.update();
     demoT = 0;
@@ -1583,9 +1801,22 @@ $('gearBtn').addEventListener('click',()=>setGear(!gearOn));
 (function(){
   const dock=$('dock'), btns=dock.querySelector('.dock-btns');
   ['pan','tilt','speed'].forEach(id=>dock.insertBefore($(id).closest('.ctrl'),btns));
-  btns.append($('fire'),$('spin'),$('gearBtn'));
+  const mkBtn=(id,label,pressed)=>{ const b=document.createElement('button'); b.className='btn'; b.id=id; b.textContent=label; b.setAttribute('aria-pressed',String(pressed)); return b; };
+  btns.append($('fire'),$('spin'),mkBtn('skinBtn','Kaplama',true),mkBtn('trBtn','Taşıma kolu',false),$('gearBtn'));
 })();
 $('pan').addEventListener('pointerdown',()=>{ if(gearOn){ gearOn=false; $('gearBtn').setAttribute('aria-pressed','false'); setGear(false); } });
+$('skinBtn').addEventListener('click',e=>{ skinOn=!skinOn; e.currentTarget.setAttribute('aria-pressed',String(skinOn)); if(gearOn) setGear(false); applySkin(); });
+$('trBtn').addEventListener('click',e=>{
+  tr.on = !tr.on; e.currentTarget.setAttribute('aria-pressed',String(tr.on));
+  if(tr.on){
+    if(gearOn) setGear(false);
+    [['pan',0],['tilt',0]].forEach(([id,v])=>{ $(id).value=v; $(id).dispatchEvent(new Event('input')); });
+    st.spin=false; $('spin').setAttribute('aria-pressed','false');
+  }
+  ['pan','tilt','fire'].forEach(id=>{ $(id).disabled = tr.on; });
+  refreshScreen();
+});
+window.__acevReady = true; applySkin(); refreshScreen();
 setView('iso');
 
 /* ---------- picking ---------- */
@@ -1656,6 +1887,8 @@ function resize(){
   const dk=document.getElementById('dock'); const dh=dk?dk.offsetHeight+12:0;
   camera.setViewOffset(w,h,0,dh/2,w,h); camera.updateProjectionMatrix();
 }
+scene.traverse(o=>{ if(o.isMesh && o.material && !o.material.transparent && o!==ground && o!==shadowPlane){ o.castShadow=true; o.receiveShadow=true; } });
+ground.castShadow=false;
 new ResizeObserver(resize).observe(stage); resize(); setView('iso');
 
 /* ---------- loop ---------- */
@@ -1672,6 +1905,21 @@ function frame(now){
   if(gearOn){
     $('gRing').textContent = (cur.pan>0?'+':'')+cur.pan.toFixed(1).replace('.',',')+'°';
     $('gPin').textContent = Math.round(cur.pan*7.5)+'°';
+  }
+  {
+    const sp = reduce ? 1 : dt*1.6;
+    if(tr.on){
+      if(Math.abs(cur.tilt)<0.6 && Math.abs(cur.pan)<0.6) tr.ext = Math.min(1,tr.ext+sp);
+      if(tr.ext>=1) tr.ang = Math.max(-16, tr.ang - (reduce?16:dt*22));
+    } else {
+      tr.ang = Math.min(0, tr.ang + (reduce?16:dt*26));
+      if(tr.ang>=0) tr.ext = Math.max(0,tr.ext-sp);
+    }
+    const e = tr.ext<.5 ? 2*tr.ext*tr.ext : 1-Math.pow(-2*tr.ext+2,2)/2;
+    setHandle(e); rigPivot.rotation.x = tr.ang*deg;
+    wheelMeshes.forEach(w=>{ w.rotation.x = -tr.ang*deg*2.2; });
+    const on = st.spin && !tr.on;
+    SK.glow.color.setHex(on ? 0xd9f24c : 0x56602a);
   }
   applyPose(); updateTrajectory();
   if(st.spin && !reduce){
