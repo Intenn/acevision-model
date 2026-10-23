@@ -1355,19 +1355,27 @@ const H_T = 314, H_F = 294;                 // head outer top / front (local)
 const BALL_Y = 160, MUZZLE_Z = H_F+2;
 
 /* ---------- fixed base ---------- */
-const AXLE = new THREE.Vector3(0,51.5,-130);
+const AXLE = new THREE.Vector3(0,39.5,-128);
 const rigPivot = new THREE.Group(); rigPivot.position.copy(AXLE); scene.add(rigPivot);
 const rig = new THREE.Group(); rig.position.copy(AXLE).multiplyScalar(-1); rigPivot.add(rig);
 const base = new THREE.Group(); rig.add(base);
 const P_FRAME = 'Sigma profil 20x20 (gövde iskeleti)';
-[-1,1].forEach(sx=>[-1,1].forEach(sz=> mk(Box(20,130,20),M.alu,P_FRAME,base,sx*200,85,sz*150)));
-[-150,150].forEach(z=>mk(Box(420,20,20),M.alu,P_FRAME,base,0,10,z));
-[-200,200].forEach(x=>mk(Box(20,20,280),M.alu,P_FRAME,base,x,10,0));
+/* frame notched at the rear corners for the wheel pockets */
+[-1,1].forEach(sx=>{
+  mk(Box(20,130,20),M.alu,P_FRAME,base,sx*200,85,150);
+  mk(Box(20,130,20),M.alu,P_FRAME,base,sx*200,85,-64);
+  mk(Box(20,130,20),M.alu,P_FRAME,base,sx*170,85,-150);
+  mk(Box(20,20,214),M.alu,P_FRAME,base,sx*200,10,43);
+  mk(Box(20,20,106),M.alu,P_FRAME,base,sx*170,10,-107);
+  mk(Box(40,20,20),M.alu,P_FRAME,base,sx*185,10,-64);
+});
+mk(Box(420,20,20),M.alu,P_FRAME,base,0,10,150);
+mk(Box(320,20,20),M.alu,P_FRAME,base,0,10,-150);
 const basePlate = mk(Box(440,8,340),M.plate,'Üst plaka, 8 mm alüminyum',base,0,154,0);
-mk(Box(380,4,280),M.abs,'Alt plaka',base,0,22,0);
-mk(Box(160,125,170),M.batt,'Akü 12 V (kuru ya da LiFePO4)',base,-110,86.5,-10);
-[-140,-80].forEach(x=>mk(CylY(6,10),M.red,'Akü kutup başı',base,x,154,-60));
-mk(Box(140,70,170),M.abs,'Elektronik kutusu: ESP32, 4x TB6600, 2x BTS7960, LM2596, 74HCT541',base,120,59,-10);
+mk(Box(360,4,280),M.abs,'Alt plaka',base,0,22,0);
+mk(Box(160,125,170),M.batt,'Akü 12 V (kuru ya da LiFePO4)',base,-100,86.5,-10);
+[-130,-70].forEach(x=>mk(CylY(6,10),M.red,'Akü kutup başı',base,x,154,-60));
+mk(Box(140,70,170),M.abs,'Elektronik kutusu: ESP32, 4x TB6600, 2x BTS7960, LM2596, 74HCT541',base,110,59,-10);
 const legacy = [mk(Box(46,46,10),M.abs,'Akü şalteri + 30 A sigorta',base,150,100,165), mk(CylZ(13,22),M.red,'Akü şalteri (acil kesme)',base,150,100,178)];
 /* pan bearing: housing with two 6005-2RS, Ø25 tube shaft */
 const PIN_OFF = 52;  // 120T ring (r60) - 16T pinion (r8)
@@ -1383,8 +1391,9 @@ mk(CylY(2.5,22,16),M.steel,'Pan motoru mili Ø5',pinGroup,0,150,0);
 mk(Box(14,6,10),M.motor,'Pan limit switch',base,72,161,-30);
 /* smoked side panels and rubber feet */
 const baseSkins = [];
-[-161,161].forEach(z=>baseSkins.push(mk(Box(400,110,3),M.smoke,'Gövde yan paneli (füme akrilik)',base,0,85,z)));
-[-211,211].forEach(x=>baseSkins.push(mk(Box(3,110,300),M.smoke,'Gövde yan paneli (füme akrilik)',base,x,85,0)));
+baseSkins.push(mk(Box(400,110,3),M.smoke,'Gövde yan paneli (füme akrilik)',base,0,85,161));
+baseSkins.push(mk(Box(320,110,3),M.smoke,'Gövde yan paneli (füme akrilik)',base,0,85,-161));
+[-211,211].forEach(x=>baseSkins.push(mk(Box(3,110,214),M.smoke,'Gövde yan paneli (füme akrilik)',base,x,85,43)));
 [-1,1].forEach(sx=>mk(CylY(18,10,28),M.rubber,'Kauçuk ön ayak',base,sx*185,-5,140));
 legacy.forEach(m=>baseSkins.push(m));
 
@@ -1538,41 +1547,56 @@ function decal(tex,w,h,parent,x,y,z,ry){
   m.position.set(x,y,z); m.rotation.y=ry; parent.add(m); skinParts.push(m); texes.push(tex); return m;
 }
 
-/* --- base shell --- */
-sk(rbox(452,122,352,46,10),SK.white,base,0,97,0);
-sk(rbox(458,46,358,48,9),SK.graph,base,0,23,0);
-sk(rboxZ(300,62,3,14,1.2),SK.graph,base,0,104,176.5);
-decal(logo(true),240,47,base,0,104,178.3,0);
-sk(rboxZ(300,3,2,1,.8),SK.glow,base,0,66,177.3);
+/* --- base shell: dark plinth with two rear wheel pockets, white upper body overhangs as fender --- */
+function plinthGeo(){
+  const b=8, h=104, s=new THREE.Shape();
+  const X=224-b, ZF=174-b, ZR=-174+b, NX=180-b, NZ=-74+b, R=46-b, r=8;
+  s.moveTo(-X+R,ZF); s.lineTo(X-R,ZF); s.quadraticCurveTo(X,ZF,X,ZF-R);
+  s.lineTo(X,NZ+r); s.quadraticCurveTo(X,NZ,X-r,NZ);
+  s.lineTo(NX+r,NZ); s.quadraticCurveTo(NX,NZ,NX,NZ-r);
+  s.lineTo(NX,ZR+r); s.quadraticCurveTo(NX,ZR,NX-r,ZR);
+  s.lineTo(-NX+r,ZR); s.quadraticCurveTo(-NX,ZR,-NX,ZR+r);
+  s.lineTo(-NX,NZ-r); s.quadraticCurveTo(-NX,NZ,-NX-r,NZ);
+  s.lineTo(-X+r,NZ); s.quadraticCurveTo(-X,NZ,-X,NZ+r);
+  s.lineTo(-X,ZF-R); s.quadraticCurveTo(-X,ZF,-X+R,ZF);
+  const g=new THREE.ExtrudeGeometry(s,{depth:h-2*b,bevelEnabled:true,bevelSize:b,bevelThickness:b,bevelSegments:4,curveSegments:12});
+  g.rotateX(Math.PI/2); g.translate(0,h-b,0); g.computeVertexNormals(); return g;   // y 0..104
+}
+sk(plinthGeo(),SK.graph,base);
+sk(rbox(452,56,352,46,10),SK.white,base,0,131,0);
+[-1,1].forEach(s=>sk(rbox(44,4,96,6,1.5),SK.graph,base,s*202,101,-126));   // pocket ceiling liner
+sk(rboxZ(300,38,3,10,1.2),SK.graph,base,0,131,176.6);
+decal(logo(true),190,37,base,0,131,178.4,0);
+sk(rboxZ(260,3,2,1,.8),SK.glow,base,0,60,175.4);
 /* rear: charge port + status LED; halo light in the parting line */
-sk(rboxZ(34,16,3,5,1),SK.glass,base,0,100,-177);
-sk(CylZ(3.5,3,20),SK.glow,base,0,124,-177.5);
+sk(rboxZ(34,16,3,5,1),SK.glass,base,0,66,-175);
+sk(CylZ(3.5,3,20),SK.glow,base,0,128,-177.5);
 sk(rbox(444,2.4,344,42,1),SK.glow,base,0,160.6,0);
-/* right side: emergency stop, left side: key switch + charge port */
-sk(CylX(26,8,32),SK.safety,base,230,96,30);
-sk(CylX(10,10,20),SK.graph,base,238,96,30);
-sk(CylX(19,12,32),SK.red,base,248,96,30);
-sk(rboxX(4,60,90,12,1.5),SK.graph,base,-227,96,40);
-sk(CylX(9,8,24),SK.alu,base,-231,108,22);
-sk(rboxX(4,14,24,4,1),SK.glass,base,-230,82,62);
+/* right side: emergency stop on the white body; left side: key switch + charge port */
+sk(CylX(22,8,32),SK.safety,base,229,131,30);
+sk(CylX(9,10,20),SK.graph,base,237,131,30);
+sk(CylX(17,12,32),SK.red,base,246,131,30);
+sk(rboxX(4,44,90,12,1.5),SK.graph,base,-227,131,40);
+sk(CylX(8,8,24),SK.alu,base,-231,131,20);
+sk(rboxX(4,12,22,4,1),SK.glass,base,-230,131,62);
 
-/* --- wheels (suitcase style, rear) --- */
+/* --- wheels, tucked into the rear pockets, outer face flush with the body side --- */
 const wheelMeshes = [];
 [-1,1].forEach(s=>{
-  const wg = new THREE.Group(); wg.position.set(s*251,AXLE.y,AXLE.z); base.add(wg); wheelMeshes.push(wg);
-  const prof=[[44,-19],[55,-19],[59.5,-17.5],[62,-13],[62,13],[59.5,17.5],[55,19],[44,19]].map(([r,y])=>new THREE.Vector2(r,y));
+  const wg = new THREE.Group(); wg.position.set(s*205,AXLE.y,AXLE.z); base.add(wg); wheelMeshes.push(wg);
+  const prof=[[35,-17],[44,-17],[48,-15.5],[50,-11],[50,11],[48,15.5],[44,17],[35,17]].map(([r,y])=>new THREE.Vector2(r,y));
   const tg=new THREE.LatheGeometry(prof,56); tg.rotateZ(Math.PI/2);
   sk(tg,SK.tire,wg,0,0,0,false);
-  sk(CylX(44,32,48),SK.alu,wg,0,0,0,false);
-  for(let k=0;k<5;k++){ const sp=sk(Box(36,8,40),SK.graph,wg,s*1,0,0,false); sp.rotation.x=k*Math.PI*2/5; sp.geometry.translate(0,0,20); }
-  sk(CylX(15,38,32),SK.graph,wg,0,0,0,false);
-  sk(CylX(7,40,20),SK.accent,wg,0,0,0,false);
-  sk(rboxX(10,74,104,16,3),SK.graph,base,s*230,AXLE.y+4,AXLE.z,false);   // axle boss
+  sk(CylX(35,28,48),SK.alu,wg,0,0,0,false);
+  for(let k=0;k<5;k++){ const sp=sk(Box(32,7,32),SK.graph,wg,s*1,0,0,false); sp.rotation.x=k*Math.PI*2/5; sp.geometry.translate(0,0,16); }
+  sk(CylX(12,34,32),SK.graph,wg,0,0,0,false);
+  sk(CylX(5.5,36,20),SK.accent,wg,0,0,0,false);
+  sk(CylX(6,22,16),SK.alu,base,s*178,AXLE.y,AXLE.z,false);   // axle stub into the plinth
 });
 
 /* --- telescopic pull handle (suitcase style) --- */
 const HZ = -188, HTX = 150;
-[-1,1].forEach(s=>sk(rbox(22,150,20,6,2.5),SK.graph,base,s*HTX,78,HZ,false));
+[-1,1].forEach(s=>sk(rbox(22,140,20,6,2.5),SK.graph,base,s*HTX,83,HZ,false));
 const stages=[];
 [[15,15],[13,13],[11,11],[9,9]].forEach(([w,d],i)=>{
   const pair=[-1,1].map(s=>sk(Box(w,150,d),SK.alu,base,s*HTX,80,HZ,false));
@@ -1583,7 +1607,7 @@ sk(rbox(334,24,30,12,6),SK.graph,grip,0,0,HZ,false);
 sk(rbox(200,6,24,3,2),SK.tire,grip,0,13,HZ,false);
 sk(rbox(46,5,14,3,1.5),SK.accent,grip,0,-11,HZ+8,false);
 function setHandle(e){  // e: 0 collapsed .. 1 extended
-  stages.forEach((pair,i)=>pair.forEach(m=>{ m.position.y = 76 + e*(i+1)*125; }));
+  stages.forEach((pair,i)=>pair.forEach(m=>{ m.position.y = 84 + e*(i+1)*125; }));
   grip.position.y = 147 + 4*125*e;
 }
 setHandle(0);
@@ -1686,6 +1710,8 @@ function applySkin(){
   const show = skinOn && !gearOnSafe();
   skinParts.forEach(m=>{ m.visible = show; });
   tilt.children.forEach(m=>{ if(m.userData.part===P_HEAD) m.visible = !show; });
+  base.children.forEach(m=>{ if(pickables.includes(m) && !/ayak/i.test(m.userData.part||'')) m.visible = !show; });
+  if(!show && gearOnSafe()) baseSkins.forEach(m=>{ m.visible=false; });
   baseSkins.forEach(m=>{ m.visible = !show && !gearOnSafe(); });
   if(!gearOnSafe()) platPlate.material = show ? SK.graph : M.plate;
 }
