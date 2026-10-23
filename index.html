@@ -1709,12 +1709,15 @@ for(let k=0;k<5;k++){
   const sp=sk(Box(L,6,10),SK.graph,tilt,SP.ax+dx*(24+L/2)/Math.hypot(dx,dz),P.y,SP.az+dz*(24+L/2)/Math.hypot(dx,dz));
   sp.rotation.y = -Math.atan2(dz,dx);
 }
-/* loading funnel at the top of the spiral */
-(function(){ const top = spiralCurve.getPoint(0);
-  const f = new THREE.CylinderGeometry(54,39,30,40,1,true);
-  sk(f,binMat,tilt,top.x,top.y+12,top.z).castShadow=false;
-  sk(new THREE.TorusGeometry(54,3,12,48).rotateX(Math.PI/2),SK.graph,tilt,top.x,top.y+27,top.z);
-  sk(new THREE.TorusGeometry(54.5,1.2,8,48).rotateX(Math.PI/2),SK.accent,tilt,top.x,top.y+29.5,top.z);
+/* spiral chamber: smoked glass upper body + white lid, same plan as the head, loading hatch on top */
+const glassMat = new THREE.MeshPhysicalMaterial({color:0x2a333b,roughness:.05,metalness:0,transparent:true,opacity:.24,clearcoat:1,clearcoatRoughness:.05,depthWrite:false,side:THREE.DoubleSide});
+const CH_Y0 = 322, CH_H = 240;
+sk(rboxC(334,CH_H,308,{fr:58,fl:58,rr:58,rl:58},10),glassMat,tilt,0,CH_Y0+CH_H/2,147).castShadow=false;
+sk(rboxC(334,26,308,{fr:58,fl:58,rr:58,rl:58},12),SK.white,tilt,0,CH_Y0+CH_H+11,147);
+(function(){ const top = spiralCurve.getPoint(0), yT = CH_Y0+CH_H+24;
+  sk(CylY(44,3,48),SK.graph,tilt,top.x,yT+0.5,top.z);
+  sk(new THREE.TorusGeometry(44,2.2,12,56).rotateX(Math.PI/2),SK.glow,tilt,top.x,yT+1.6,top.z);
+  sk(rbox(22,3,8,3,1),SK.graph,tilt,top.x,yT+2.6,top.z);
 })();
 /* 15 balls queued from the bottom of the track upward */
 const binBalls = []; const ballGeo = new THREE.SphereGeometry(33.5,28,18);
