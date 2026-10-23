@@ -131,7 +131,7 @@ tr:last-child td{border-bottom:0}
           </div>
           <div class="ctrl">
             <label for="tilt">Tilt (yükseliş) <output id="tiltOut">15°</output></label>
-            <input type="range" id="tilt" min="0" max="50" step="0.5" value="15">
+            <input type="range" id="tilt" min="0" max="50" step="0.5" value="0">
             <small>0–50°, somunlar vidada yukarı çıkar, mafsal blokları alt profilde öne kayar</small>
           </div>
           <div class="ctrl">
@@ -1266,7 +1266,7 @@ const rim = new THREE.DirectionalLight(0xffffff,.22); rim.position.set(-300,900,
 
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(30000,30000), new THREE.MeshBasicMaterial({color:0xffffff}));
 ground.rotation.x = -Math.PI/2; ground.position.y = -10.5; scene.add(ground);
-const shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(8000,8000), new THREE.ShadowMaterial({opacity:.2}));
+const shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(8000,8000), new THREE.ShadowMaterial({opacity:.26}));
 shadowPlane.rotation.x = -Math.PI/2; shadowPlane.position.y = -10.2; shadowPlane.receiveShadow = true; scene.add(shadowPlane);
 let grid = null;
 
@@ -1485,9 +1485,9 @@ const wheels = [];
 /* ball channel, magazine, feeder (all inside the frame) */
 mk(Box(72,4,140),M.plate,'Top kanalı',tilt,0,BALL_Y-36,85);
 [-37,37].forEach(x=>mk(Box(4,22,140),M.plate,'Top kanalı kenarı',tilt,x,BALL_Y-25,85));
-mk(CylY(38,215,36,true),M.acrylic,'Top magazini (akrilik boru Ø76)',tilt,0,BALL_Y+35+107.5,70);
-mk(annulus(44,37,6),M.panel,'Magazin ağzı',tilt,0,BALL_Y+35+215+6,70);
-[BALL_Y,BALL_Y+68,BALL_Y+136,BALL_Y+204].forEach(y=>mk(new THREE.SphereGeometry(33.5,32,20),M.ball,'Tenis topu Ø67',tilt,0,y,70));
+mk(CylY(38,140,36,true),M.acrylic,'Top magazini (akrilik boru Ø76)',tilt,0,BALL_Y+35+70,70);
+mk(annulus(44,37,6),M.panel,'Magazin ağzı',tilt,0,BALL_Y+35+140+6,70);
+[BALL_Y,BALL_Y+68,BALL_Y+136].forEach(y=>mk(new THREE.SphereGeometry(33.5,32,20),M.ball,'Tenis topu Ø67',tilt,0,y,70));
 mk(Box(40,42,42),M.motor,'Besleme motoru NEMA 17, çerçeve içinde (TB6600)',tilt,-80,BALL_Y,70);
 mk(CylX(3,40),M.steel,'Besleme motoru mili',tilt,-48,BALL_Y,70);
 mk(CylX(26,6,6),M.petg,'Besleme çarkı (yıldız)',tilt,-42,BALL_Y,70);
@@ -1497,8 +1497,9 @@ const muzzleAhead = new THREE.Object3D(); muzzleAhead.position.set(0,BALL_Y,MUZZ
 
 /* =================== ÜRÜN KAPLAMASI =================== */
 const SK = {
-  white: new THREE.MeshPhysicalMaterial({color:0xeef0f2,roughness:.36,metalness:0,clearcoat:.7,clearcoatRoughness:.22}),
-  graph: new THREE.MeshPhysicalMaterial({color:0x2a2f35,roughness:.5,metalness:.05,clearcoat:.3,clearcoatRoughness:.4}),
+  white: new THREE.MeshPhysicalMaterial({color:0xf1f2f3,roughness:.48,metalness:0,clearcoat:.25,clearcoatRoughness:.5}),
+  graph: new THREE.MeshPhysicalMaterial({color:0x23272c,roughness:.62,metalness:.05,clearcoat:.15,clearcoatRoughness:.6}),
+  visor: new THREE.MeshPhysicalMaterial({color:0x111418,roughness:.12,metalness:.2,clearcoat:1,clearcoatRoughness:.08}),
   accent: new THREE.MeshPhysicalMaterial({color:0xc6e03a,roughness:.35,metalness:0,clearcoat:.6}),
   glow: new THREE.MeshBasicMaterial({color:0xd9f24c}),
   glass: new THREE.MeshPhysicalMaterial({color:0x0a0d10,roughness:.08,metalness:.1,clearcoat:1}),
@@ -1524,6 +1525,17 @@ function rbox(w,h,d,rc=12,b=3){
   const g = new THREE.ExtrudeGeometry(s,{depth:Math.max(.2,h-2*b),bevelEnabled:true,bevelSize:b,bevelThickness:b,bevelSegments:4,curveSegments:10});
   g.rotateX(Math.PI/2); g.translate(0,(h-2*b)/2,0); g.computeVertexNormals(); return g;
 }
+function rboxC(w,h,d,rr,b=3){   // rr = {fr,fl,rr,rl}: front/rear (+z/-z) x right/left (+x/-x)
+  const W=w-2*b, D=d-2*b, k=v=>Math.max(.5,Math.min(v-b,W/2-.1,D/2-.1));
+  const FR=k(rr.fr), FL=k(rr.fl), RR=k(rr.rr), RL=k(rr.rl), x0=-W/2, x1=W/2, z0=-D/2, z1=D/2;
+  const s=new THREE.Shape();
+  s.moveTo(x0+RL,z0); s.lineTo(x1-RR,z0); s.absarc(x1-RR,z0+RR,RR,-Math.PI/2,0,false);
+  s.lineTo(x1,z1-FR); s.absarc(x1-FR,z1-FR,FR,0,Math.PI/2,false);
+  s.lineTo(x0+FL,z1); s.absarc(x0+FL,z1-FL,FL,Math.PI/2,Math.PI,false);
+  s.lineTo(x0,z0+RL); s.absarc(x0+RL,z0+RL,RL,Math.PI,Math.PI*1.5,false);
+  const g=new THREE.ExtrudeGeometry(s,{depth:Math.max(.2,h-2*b),bevelEnabled:true,bevelSize:b,bevelThickness:b,bevelSegments:6,curveSegments:16});
+  g.rotateX(Math.PI/2); g.translate(0,(h-2*b)/2,0); g.computeVertexNormals(); return g;
+}
 const rboxX = (t,h,d,rc,b) => { const g=rbox(h,t,d,rc,b); g.rotateZ(Math.PI/2); return g; };  // thin in x
 const rboxZ = (w,h,t,rc,b) => { const g=rbox(w,t,h,rc,b); g.rotateX(Math.PI/2); return g; };  // thin in z
 function canvasTex(w,h,draw){
@@ -1532,14 +1544,14 @@ function canvasTex(w,h,draw){
   draw(c.getContext('2d'),w,h); return t;
 }
 const texes=[];
-function logo(onDark){
+function logo(onDark,tone){
   return canvasTex(1024,200,(x,w,h)=>{
     x.clearRect(0,0,w,h);
     x.font = "700 150px 'Barlow Condensed','Arial Narrow',Arial,sans-serif"; x.textBaseline='middle';
     const a='ACE', b='VISION'; const wa=x.measureText(a).width, wb=x.measureText(b).width, gap=10;
     const x0=(w-(wa+gap+wb))/2;
-    x.fillStyle = onDark ? '#d9f24c' : '#8fa818'; x.fillText(a,x0,h/2+6);
-    x.fillStyle = onDark ? '#f1f3f5' : '#2a2f35'; x.fillText(b,x0+wa+gap,h/2+6);
+    x.fillStyle = tone ? '#b4c63c' : (onDark ? '#d9f24c' : '#8fa818'); x.fillText(a,x0,h/2+6);
+    x.fillStyle = tone ? '#a9b0b6' : (onDark ? '#f1f3f5' : '#2a2f35'); x.fillText(b,x0+wa+gap,h/2+6);
   });
 }
 function decal(tex,w,h,parent,x,y,z,ry){
@@ -1565,13 +1577,20 @@ function plinthGeo(){
 sk(plinthGeo(),SK.graph,base);
 sk(rbox(452,56,352,46,10),SK.white,base,0,131,0);
 [-1,1].forEach(s=>sk(rbox(44,4,96,6,1.5),SK.graph,base,s*202,101,-126));   // pocket ceiling liner
-sk(rboxZ(300,38,3,10,1.2),SK.graph,base,0,131,176.6);
-decal(logo(true),190,37,base,0,131,178.4,0);
-sk(rboxZ(260,3,2,1,.8),SK.glow,base,0,60,175.4);
+decal(logo(false,true),150,29,base,0,131,176.3,0);
 /* rear: charge port + status LED; halo light in the parting line */
 sk(rboxZ(34,16,3,5,1),SK.glass,base,0,66,-175);
 sk(CylZ(3.5,3,20),SK.glow,base,0,128,-177.5);
-sk(rbox(444,2.4,344,42,1),SK.glow,base,0,160.6,0);
+(function(){   // halo: a thin light line in the parting gap, not a filled plate
+  const rr=(w,d,r)=>{ const p=new THREE.Path(), x=-w/2, z=-d/2;
+    p.moveTo(x+r,z); p.lineTo(x+w-r,z); p.absarc(x+w-r,z+r,r,-Math.PI/2,0,false);
+    p.lineTo(x+w,z+d-r); p.absarc(x+w-r,z+d-r,r,0,Math.PI/2,false);
+    p.lineTo(x+r,z+d); p.absarc(x+r,z+d-r,r,Math.PI/2,Math.PI,false);
+    p.lineTo(x,z+r); p.absarc(x+r,z+r,r,Math.PI,Math.PI*1.5,false); return p; };
+  const o=rr(446,346,43), sh=new THREE.Shape(o.getPoints(24));
+  sh.holes.push(new THREE.Path(rr(434,334,37).getPoints(24).reverse()));
+  sk(flatExtrude(sh,2.4),SK.glow,base,0,161.8,0);
+})();
 /* right side: emergency stop on the white body; left side: key switch + charge port */
 sk(CylX(22,8,32),SK.safety,base,229,131,30);
 sk(CylX(9,10,20),SK.graph,base,237,131,30);
@@ -1614,6 +1633,8 @@ setHandle(0);
 
 /* --- cradle: skirt (same outline as base) + two fins, one white piece that turns with pan --- */
 sk(rbox(452,26,352,46,8),SK.white,pan,0,175,0);
+sk(rbox(296,24,282,28,7),SK.white,pan,0,198,34);
+sk(rbox(266,2,236,18,.8),SK.graph,pan,0,211,30);
 (function(){
   const sh=new THREE.Shape();
   sh.moveTo(-144,188); sh.lineTo(-144,214); sh.quadraticCurveTo(-144,236,-122,236); sh.lineTo(-62,236);
@@ -1625,39 +1646,25 @@ sk(rbox(452,26,352,46,8),SK.white,pan,0,175,0);
   const gr=g.clone(); gr.translate(226-bb.max.x,0,0);
   const gl=g.clone(); gl.translate(-226-bb.min.x,0,0);
   sk(gr,SK.white,pan); sk(gl,SK.white,pan);
-  [-1,1].forEach(s=>sk(rboxX(1.5,3,96,1.5,.6),SK.accent,pan,s*226.6,486,50));
 })();
 
-/* --- head shell (in tilt frame) --- */
-sk(rbox(334,314,308,30,14),SK.white,tilt,0,165,147);
-sk(rbox(300,4,250,12,1.5),SK.graph,tilt,0,4,170);
-(function(){   // front fascia with muzzle
-  const W=300,H=282,r=18, s=new THREE.Shape(), x=-W/2, y=24;
-  s.moveTo(x+r,y); s.lineTo(x+W-r,y); s.absarc(x+W-r,y+r,r,-Math.PI/2,0,false);
-  s.lineTo(x+W,y+H-r); s.absarc(x+W-r,y+H-r,r,0,Math.PI/2,false);
-  s.lineTo(x+r,y+H); s.absarc(x+r,y+H-r,r,Math.PI/2,Math.PI,false);
-  s.lineTo(x,y+r); s.absarc(x+r,y+r,r,Math.PI,Math.PI*1.5,false);
-  const h=new THREE.Path(); h.absarc(0,BALL_Y,46,0,Math.PI*2,true); s.holes.push(h);
-  const g=new THREE.ExtrudeGeometry(s,{depth:6,bevelEnabled:true,bevelSize:3,bevelThickness:3,bevelSegments:4,curveSegments:40});
-  sk(g,SK.graph,tilt,0,0,300);
-})();
-const ringG = new THREE.TorusGeometry(51,5.5,20,72); sk(ringG,SK.accent,tilt,0,BALL_Y,310.5);
-sk(CylZ(46,28,48),SK.glass,tilt,0,BALL_Y,298).material = new THREE.MeshStandardMaterial({color:0x0b0e11,roughness:.6,side:THREE.BackSide});
-const ledBar = sk(rboxZ(190,4,2,2,.8),SK.glow,tilt,0,288,309.6);
-[-1,1].forEach(s=>decal(logo(false),118,23,tilt,s*167.4,262,58,s*Math.PI/2));
-[-1,1].forEach(s=>sk(rboxX(1.5,3,112,2,.6),SK.accent,tilt,s*167.4,244,58));
-/* rear: 7 inch touchscreen, faces the operator and tilts toward their eyes */
-sk(rboxZ(198,118,6,14,2.5),SK.graph,tilt,0,214,-9);
+/* --- head: soft white pod with a dark glass visor; at 0° it sits on the cradle seat --- */
+sk(rboxC(334,314,228,{fr:2,fl:2,rr:58,rl:58},24),SK.white,tilt,0,165,107);
+sk(rboxC(334,314,80,{fr:58,fl:58,rr:2,rl:2},24),SK.visor,tilt,0,165,261);
+const bore = new THREE.Mesh(new THREE.CircleGeometry(44,64), new THREE.MeshBasicMaterial({color:0x040506}));
+bore.position.set(0,BALL_Y,301.4); tilt.add(bore); skinParts.push(bore);
+const ringG = new THREE.TorusGeometry(50,4.5,20,80); const ledBar = sk(ringG,SK.glow,tilt,0,BALL_Y,301.6);
+/* rear: dark glass panel with the 7 inch touchscreen, faces the operator */
+sk(rboxZ(214,156,4,20,1.5),SK.visor,tilt,0,206,-8.6);
 const screenTex = canvasTex(640,360,drawScreen); texes.push(screenTex);
 const screen = new THREE.Mesh(new THREE.PlaneGeometry(168,94), new THREE.MeshBasicMaterial({map:screenTex,toneMapped:false}));
-screen.position.set(0,214,-12.4); screen.rotation.y=Math.PI; tilt.add(screen); skinParts.push(screen);
-for(let i=0;i<4;i++) sk(rboxZ(120,5,2,2.5,.8),SK.graph,tilt,0,128-i*14,-7.6);
-/* hopper collar + smoked lid on top */
-sk(annulus(54,39,16),SK.graph,tilt,0,340,70);
-sk(annulus(56,52,2),SK.accent,tilt,0,341,70);
-const lidG = new THREE.SphereGeometry(42,40,16,0,Math.PI*2,0,Math.PI/2); lidG.scale(1,.55,1);
-sk(lidG,SK.smokeLid,tilt,0,416,70).castShadow=false;
-muzzle.position.z = 318; muzzleAhead.position.z = 319;
+screen.position.set(0,212,-10.8); screen.rotation.y=Math.PI; tilt.add(screen); skinParts.push(screen);
+decal(logo(true),64,12.5,tilt,0,272,-10.9,Math.PI);
+/* hopper: flush collar + low smoked lid, balls just visible */
+sk(annulus(50,39,6),SK.graph,tilt,0,327,70);
+const lidG = new THREE.SphereGeometry(42,40,16,0,Math.PI*2,0,Math.PI/2); lidG.scale(1,.38,1);
+sk(lidG,SK.smokeLid,tilt,0,327,70).castShadow=false;
+muzzle.position.z = 304; muzzleAhead.position.z = 305;
 
 /* --- touchscreen UI --- */
 function drawScreen(x,w,h){
@@ -1692,7 +1699,7 @@ function drawScreen(x,w,h){
     x.fillStyle='#f4f6f8'; x.font=D(36); x.fillText(val,w-222,ty+56); };
   tile('YÜKSELİŞ', T.tilt.toFixed(1).replace('.',',')+'°',84);
   tile('YÖN', (T.pan>0?'+':'')+T.pan.toFixed(1).replace('.',',')+'°',156);
-  tile('MAGAZİN','4 top',228);
+  tile('MAGAZİN','3 top',228);
   x.fillStyle = T.spin ? '#d9f24c' : '#3a454e'; x.beginPath(); x.roundRect ? x.roundRect(24,250,248,44,22) : x.rect(24,250,248,44); x.fill();
   x.fillStyle = T.spin ? '#0b0f12' : '#c6ced4'; x.font=F(700,20); x.fillText(T.spin ? 'SERİ ATIŞ · FOREHAND' : 'BEKLEMEDE',44,279);
   x.fillStyle='#5f6b75'; x.font=F(500,17); x.fillText('Telefon bağlı · UDP 4210',24,336);
@@ -1709,9 +1716,8 @@ const tr = {on:false, ext:0, ang:0};
 function applySkin(){
   const show = skinOn && !gearOnSafe();
   skinParts.forEach(m=>{ m.visible = show; });
-  tilt.children.forEach(m=>{ if(m.userData.part===P_HEAD) m.visible = !show; });
-  base.children.forEach(m=>{ if(pickables.includes(m) && !/ayak/i.test(m.userData.part||'')) m.visible = !show; });
-  if(!show && gearOnSafe()) baseSkins.forEach(m=>{ m.visible=false; });
+  /* everything mechanical lives inside the shell: hide it, except feet and the balls seen through the lid */
+  pickables.forEach(m=>{ if(!/ayak|Tenis topu|magazin/i.test(m.userData.part||'')) m.visible = !show; });
   baseSkins.forEach(m=>{ m.visible = !show && !gearOnSafe(); });
   if(!gearOnSafe()) platPlate.material = show ? SK.graph : M.plate;
 }
@@ -1728,8 +1734,8 @@ landMark.rotation.x=-Math.PI/2; landMark.position.y=1; scene.add(landMark);
 trLine.visible = false; landMark.visible = false;
 
 /* ---------- state ---------- */
-const st = {pan:0, tilt:15, speed:22, spin:true};
-const cur = {pan:0, tilt:15};
+const st = {pan:0, tilt:0, speed:22, spin:true};
+const cur = {pan:0, tilt:0};
 const deg = Math.PI/180;
 
 function sliderLocalZ(th){ return (D_ARM + Y0*Math.sin(th))/Math.cos(th); }
@@ -1904,7 +1910,7 @@ function applyTheme(){
   ground.material.color.set(sc).offsetHSL(0,0,-0.025);
   if(grid){ scene.remove(grid); grid.geometry.dispose(); }
   grid = new THREE.GridHelper(12000,60,new THREE.Color(css('--grid')),new THREE.Color(css('--grid')));
-  grid.position.y=-10; grid.material.transparent=true; grid.material.opacity=.7; scene.add(grid);
+  grid.position.y=-10; grid.material.transparent=true; grid.material.opacity=.7; grid.visible=false; scene.add(grid);
   const acc = new THREE.Color(css('--accent')||'#2a5f9e');
   trMat.color.copy(acc); landMark.material.color.copy(acc);
   edgeMat.color.set(css('--edge')||'#1d262e');
