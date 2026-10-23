@@ -1673,34 +1673,55 @@ const screenTex = canvasTex(640,360,drawScreen); texes.push(screenTex);
 const screen = new THREE.Mesh(new THREE.PlaneGeometry(168,94), new THREE.MeshBasicMaterial({map:screenTex,toneMapped:false}));
 screen.position.set(0,212,-10.8); screen.rotation.y=Math.PI; tilt.add(screen); skinParts.push(screen);
 decal(logo(true),64,12.5,tilt,0,272,-10.9,Math.PI);
-/* hopper: ~40 ball smoked bin on top of the head, sealed lid against rain */
-const binMat = new THREE.MeshPhysicalMaterial({color:0x6d7882,roughness:.05,metalness:0,transparent:true,opacity:.16,clearcoat:1,depthWrite:false,side:THREE.DoubleSide});
-function rrPath(w,d,r){ const p=new THREE.Path(), x=-w/2, z=-d/2;
-  p.moveTo(x+r,z); p.lineTo(x+w-r,z); p.absarc(x+w-r,z+r,r,-Math.PI/2,0,false);
-  p.lineTo(x+w,z+d-r); p.absarc(x+w-r,z+d-r,r,0,Math.PI/2,false);
-  p.lineTo(x+r,z+d); p.absarc(x+r,z+d-r,r,Math.PI/2,Math.PI,false);
-  p.lineTo(x,z+r); p.absarc(x+r,z+r,r,Math.PI,Math.PI*1.5,false); return p; }
-function ringPlan(w,d,r,t,depth){ const sh=new THREE.Shape(rrPath(w,d,r).getPoints(20)); sh.holes.push(new THREE.Path(rrPath(w-2*t,d-2*t,r-t).getPoints(20).reverse())); return flatExtrude(sh,depth); }
-const BIN_Y = 324, BIN_H = 210, BIN_Z = 147;
-(function(){
-  const g = ringPlan(280,280,40,3,BIN_H); g.translate(0,BIN_H,0);
-  const pa=g.attributes.position; for(let i=0;i<pa.count;i++){ const f=1+0.12*pa.getY(i)/BIN_H; pa.setX(i,pa.getX(i)*f); pa.setZ(i,pa.getZ(i)*f); }
-  g.computeVertexNormals(); const m=sk(g,binMat,tilt,0,BIN_Y,BIN_Z); m.castShadow=false;
+/* ball spiral: clear helical track, 15 balls, runs down into the head and ends above the feeder */
+const binMat = new THREE.MeshPhysicalMaterial({color:0x9fb3c2,roughness:.04,metalness:0,transparent:true,opacity:.3,clearcoat:1,depthWrite:false,side:THREE.DoubleSide});
+const SP = {R:95, ax:0, az:150, yb:364, pitch:84, turns:1.75};
+const helix = phi => new THREE.Vector3(SP.ax + SP.R*Math.sin(phi), SP.yb + SP.pitch*phi/(2*Math.PI), SP.az - SP.R*Math.cos(phi));
+const spiralCurve = (function(){
+  const phiMax = SP.turns*2*Math.PI, phi0 = 0.5, pts = [];
+  const Q = helix(phiMax), T = new THREE.Vector3(SP.R*Math.cos(phiMax), SP.pitch/(2*Math.PI), SP.R*Math.sin(phiMax)).normalize();
+  pts.push(Q.clone().addScaledVector(T,34).add(new THREE.Vector3(0,40,0)));     // inlet, opens upward
+  pts.push(Q.clone().addScaledVector(T,26).add(new THREE.Vector3(0,14,0)));
+  for(let i=0;i<=60;i++){ const ph = phiMax - (phiMax-phi0)*i/60; pts.push(helix(ph)); }
+  const E = helix(phi0);
+  pts.push(new THREE.Vector3(E.x*0.45, E.y-14, E.z-6));
+  pts.push(new THREE.Vector3(0, E.y-34, 72));
+  pts.push(new THREE.Vector3(0, 300, 70));                                      // drops through the head top into the feeder tube
+  return new THREE.CatmullRomCurve3(pts,false,'centripetal');
 })();
-sk(rbox(290,8,290,44,3),SK.graph,tilt,0,BIN_Y+2,BIN_Z);
-sk(ringPlan(322,322,46,7,8),SK.graph,tilt,0,BIN_Y+BIN_H+8,BIN_Z);
-sk(flatExtrude(new THREE.Shape(rrPath(318,318,45).getPoints(20)),4),SK.smokeLid,tilt,0,BIN_Y+BIN_H+12,BIN_Z).castShadow=false;
-sk(rbox(200,6,14,4,2),SK.graph,tilt,0,BIN_Y+BIN_H+11,BIN_Z-152);
-sk(rbox(60,5,10,3,1.5),SK.accent,tilt,0,BIN_Y+BIN_H+13,BIN_Z+156);
-const binBalls = []; const ballGeo = new THREE.SphereGeometry(33.5,28,18);
-[[4,0],[3,1],[4,2]].forEach(([n,L])=>{
-  const step=68, off=(n-1)/2;
-  for(let i=0;i<n;i++) for(let j=0;j<n;j++){
-    const m=new THREE.Mesh(ballGeo,M.ball); m.castShadow=true;
-    m.position.set((i-off)*step+(L===1?0:((i*7+j*3)%5-2)), BIN_Y+42+L*62, BIN_Z+(j-off)*step+(L===1?0:((i*3+j*5)%5-2)));
-    tilt.add(m); skinParts.push(m); binBalls.push(m);
+sk(new THREE.TubeGeometry(spiralCurve,420,38,24,false),binMat,tilt).castShadow=false;
+/* two thin guide rails along the track so the spiral reads clearly */
+(function(){ const N=260, below=[], outer=[];
+  for(let i=0;i<=N;i++){ const u=i/N, P=spiralCurve.getPointAt(u);
+    below.push(P.clone().add(new THREE.Vector3(0,-39,0)));
+    const r=new THREE.Vector3(P.x-SP.ax,0,P.z-SP.az); const d=r.length();
+    outer.push(d>40 ? P.clone().add(r.multiplyScalar(39/d)) : P.clone().add(new THREE.Vector3(0,0,-39)));
   }
-});
+  [below,outer].forEach(pts=>sk(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),400,3,8,false),SK.graph,tilt));
+})();
+/* centre column, spokes and base disc */
+sk(CylY(24,190,32),SK.graph,tilt,SP.ax,322+95,SP.az);
+sk(CylY(30,8,40),SK.graph,tilt,SP.ax,322+190+4,SP.az);
+sk(CylY(122,6,64),SK.graph,tilt,SP.ax,325,SP.az);
+for(let k=0;k<5;k++){
+  const ph = 0.9 + k*(SP.turns*2*Math.PI-1.4)/4, P = helix(ph);
+  const dx=P.x-SP.ax, dz=P.z-SP.az, L=Math.hypot(dx,dz)-36-24;
+  const sp=sk(Box(L,6,10),SK.graph,tilt,SP.ax+dx*(24+L/2)/Math.hypot(dx,dz),P.y,SP.az+dz*(24+L/2)/Math.hypot(dx,dz));
+  sp.rotation.y = -Math.atan2(dz,dx);
+}
+/* loading funnel at the top of the spiral */
+(function(){ const top = spiralCurve.getPoint(0);
+  const f = new THREE.CylinderGeometry(54,39,30,40,1,true);
+  sk(f,binMat,tilt,top.x,top.y+12,top.z).castShadow=false;
+  sk(new THREE.TorusGeometry(54,3,12,48).rotateX(Math.PI/2),SK.graph,tilt,top.x,top.y+27,top.z);
+  sk(new THREE.TorusGeometry(54.5,1.2,8,48).rotateX(Math.PI/2),SK.accent,tilt,top.x,top.y+29.5,top.z);
+})();
+/* 15 balls queued from the bottom of the track upward */
+const binBalls = []; const ballGeo = new THREE.SphereGeometry(33.5,28,18);
+(function(){ const L = spiralCurve.getLength();
+  for(let k=0;k<15;k++){ const u = 1 - (60 + 69*k)/L; const m=new THREE.Mesh(ballGeo,M.ball); m.castShadow=true;
+    m.position.copy(spiralCurve.getPointAt(Math.max(0,u))); tilt.add(m); skinParts.push(m); binBalls.push(m); }
+})();
 let ballsLeft = binBalls.length;
 /* vision camera in the visor, aligned with the barrel */
 sk(CylZ(16,5,40),SK.graph,tilt,0,262,302);
