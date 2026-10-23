@@ -1405,7 +1405,7 @@ const HINGE_X = HX+30;
   mk(CylX(12,16,32),M.cap,'Arka menteşe: KP08 rulmanlı yatak',pan,x,PIV.y,PIV.z);
   mk(CylX(8,8,24),M.bright,'Mil bileziği (eksenel kilit)',pan,x+s*13,PIV.y,PIV.z);
 });
-mk(CylX(4,2*HINGE_X+40,24),M.screw,'Arka menteşe mili Ø8, kafayla birlikte döner',pan,0,PIV.y,PIV.z);
+mk(CylX(4,2*HINGE_X+30,24),M.screw,'Arka menteşe mili Ø8, kafayla birlikte döner',pan,0,PIV.y,PIV.z);
 mk(Box(12,6,18),M.motor,'Tilt limit switch (0° dayama)',pan,-60,177,40);
 
 /* side towers: fixed motor on top, vertical screw, KP08 at bottom */
@@ -1419,7 +1419,7 @@ const nuts = [];
   mk(CylY(9,22),M.hub,'Esnek kaplin 5x8',pan,x,MOTOR_FACE_Y-17,SCREW_Z);
   const sl = (MOTOR_FACE_Y-28)-(KP_Y-8);
   mk(CylY(4,sl,16),M.screw,'T8x8 trapez vida, dikey',pan,x,KP_Y-8+sl/2,SCREW_Z);
-  mk(Box(55,13,29),M.iron,'KP08 rulmanlı yatak (vida alt ucu)',pan,x,180,SCREW_Z+6);
+  mk(Box(29,13,55),M.iron,'KP08 rulmanlı yatak (vida alt ucu)',pan,x,180,SCREW_Z);
   mk(CylY(12,15),M.cap,'KP08 rulmanlı yatak (vida alt ucu)',pan,x,KP_Y,SCREW_Z);
   const n = new THREE.Group(); pan.add(n); n.position.set(x,300,SCREW_Z);
   mk(Box(24,28,24),M.petg,'Somun bloğu (PETG), vida üzerinde yukarı aşağı gider',n);
@@ -1544,12 +1544,10 @@ sk(rbox(458,46,358,48,9),SK.graph,base,0,23,0);
 sk(rboxZ(300,62,3,14,1.2),SK.graph,base,0,104,176.5);
 decal(logo(true),240,47,base,0,104,178.3,0);
 sk(rboxZ(300,3,2,1,.8),SK.glow,base,0,66,177.3);
-/* rear: touchscreen */
-sk(rboxZ(184,104,8,14,3),SK.graph,base,0,82,-178);
-const screenTex = canvasTex(640,360,drawScreen); texes.push(screenTex);
-const screen = new THREE.Mesh(new THREE.PlaneGeometry(166,93), new THREE.MeshBasicMaterial({map:screenTex,toneMapped:false}));
-screen.position.set(0,82,-182.2); screen.rotation.y=Math.PI; base.add(screen); skinParts.push(screen);
-sk(CylZ(4,3,20),SK.glow,base,74,33,-182);   // status LED
+/* rear: charge port + status LED; halo light in the parting line */
+sk(rboxZ(34,16,3,5,1),SK.glass,base,0,100,-177);
+sk(CylZ(3.5,3,20),SK.glow,base,0,124,-177.5);
+sk(rbox(444,2.4,344,42,1),SK.glow,base,0,160.6,0);
 /* right side: emergency stop, left side: key switch + charge port */
 sk(CylX(26,8,32),SK.safety,base,230,96,30);
 sk(CylX(10,10,20),SK.graph,base,238,96,30);
@@ -1574,7 +1572,7 @@ const wheelMeshes = [];
 
 /* --- telescopic pull handle (suitcase style) --- */
 const HZ = -188, HTX = 150;
-[-1,1].forEach(s=>sk(rbox(22,154,20,6,2.5),SK.graph,base,s*HTX,80,HZ,false));
+[-1,1].forEach(s=>sk(rbox(22,150,20,6,2.5),SK.graph,base,s*HTX,78,HZ,false));
 const stages=[];
 [[15,15],[13,13],[11,11],[9,9]].forEach(([w,d],i)=>{
   const pair=[-1,1].map(s=>sk(Box(w,150,d),SK.alu,base,s*HTX,80,HZ,false));
@@ -1585,43 +1583,51 @@ sk(rbox(334,24,30,12,6),SK.graph,grip,0,0,HZ,false);
 sk(rbox(200,6,24,3,2),SK.tire,grip,0,13,HZ,false);
 sk(rbox(46,5,14,3,1.5),SK.accent,grip,0,-11,HZ+8,false);
 function setHandle(e){  // e: 0 collapsed .. 1 extended
-  stages.forEach((pair,i)=>pair.forEach(m=>{ m.position.y = 80 + e*(i+1)*125; }));
-  grip.position.y = 155 + 4*125*e - 4;
+  stages.forEach((pair,i)=>pair.forEach(m=>{ m.position.y = 76 + e*(i+1)*125; }));
+  grip.position.y = 147 + 4*125*e;
 }
 setHandle(0);
 
-/* --- tilt tower shrouds (on pan platform) --- */
-[-1,1].forEach(s=>{
-  sk(rboxX(6,266,104,16,2.5),SK.white,pan,s*212,309,50);
-  sk(rboxZ(46,266,6,10,2),SK.white,pan,s*191,309,100);
-  sk(rboxZ(46,266,6,10,2),SK.white,pan,s*191,309,0);
-  sk(rbox(50,64,108,16,7),SK.graph,pan,s*192,471,50);
-  sk(rbox(52,4,110,16,1.5),SK.glow,pan,s*192,437,50);
-});
+/* --- cradle: skirt (same outline as base) + two fins, one white piece that turns with pan --- */
+sk(rbox(452,26,352,46,8),SK.white,pan,0,175,0);
+(function(){
+  const sh=new THREE.Shape();
+  sh.moveTo(-144,188); sh.lineTo(-144,214); sh.quadraticCurveTo(-144,236,-122,236); sh.lineTo(-62,236);
+  sh.quadraticCurveTo(-8,236,-8,302); sh.lineTo(-8,468); sh.quadraticCurveTo(-8,512,36,512);
+  sh.lineTo(64,512); sh.quadraticCurveTo(108,512,108,468); sh.lineTo(108,188); sh.closePath();
+  const g=new THREE.ExtrudeGeometry(sh,{depth:44,bevelEnabled:true,bevelSize:6,bevelThickness:6,bevelSegments:5,curveSegments:28});
+  g.rotateY(-Math.PI/2); g.computeVertexNormals(); g.computeBoundingBox();
+  const bb=g.boundingBox;
+  const gr=g.clone(); gr.translate(226-bb.max.x,0,0);
+  const gl=g.clone(); gl.translate(-226-bb.min.x,0,0);
+  sk(gr,SK.white,pan); sk(gl,SK.white,pan);
+  [-1,1].forEach(s=>sk(rboxX(1.5,3,96,1.5,.6),SK.accent,pan,s*226.6,486,50));
+})();
 
 /* --- head shell (in tilt frame) --- */
-sk(rbox(334,10,308,22,4),SK.white,tilt,0,319,147);
-[-1,1].forEach(s=>sk(rboxX(6,286,308,22,2.5),SK.white,tilt,s*164,176,147));
-sk(rboxZ(322,306,6,10,2.5),SK.white,tilt,0,161,-3);
-sk(rbox(316,4,268,10,1.5),SK.graph,tilt,0,1,166);
+sk(rbox(334,314,308,30,14),SK.white,tilt,0,165,147);
+sk(rbox(300,4,250,12,1.5),SK.graph,tilt,0,4,170);
 (function(){   // front fascia with muzzle
-  const W=334,H=314,r=22, s=new THREE.Shape(), x=-W/2, y=8;
+  const W=300,H=282,r=18, s=new THREE.Shape(), x=-W/2, y=24;
   s.moveTo(x+r,y); s.lineTo(x+W-r,y); s.absarc(x+W-r,y+r,r,-Math.PI/2,0,false);
   s.lineTo(x+W,y+H-r); s.absarc(x+W-r,y+H-r,r,0,Math.PI/2,false);
   s.lineTo(x+r,y+H); s.absarc(x+r,y+H-r,r,Math.PI/2,Math.PI,false);
   s.lineTo(x,y+r); s.absarc(x+r,y+r,r,Math.PI,Math.PI*1.5,false);
   const h=new THREE.Path(); h.absarc(0,BALL_Y,46,0,Math.PI*2,true); s.holes.push(h);
   const g=new THREE.ExtrudeGeometry(s,{depth:6,bevelEnabled:true,bevelSize:3,bevelThickness:3,bevelSegments:4,curveSegments:40});
-  sk(g,SK.graph,tilt,0,0,301);
+  sk(g,SK.graph,tilt,0,0,300);
 })();
-const ringG = new THREE.TorusGeometry(51,5.5,20,72); sk(ringG,SK.accent,tilt,0,BALL_Y,312);
+const ringG = new THREE.TorusGeometry(51,5.5,20,72); sk(ringG,SK.accent,tilt,0,BALL_Y,310.5);
 sk(CylZ(46,28,48),SK.glass,tilt,0,BALL_Y,298).material = new THREE.MeshStandardMaterial({color:0x0b0e11,roughness:.6,side:THREE.BackSide});
-const ledBar = sk(rboxZ(210,5,2,2,.8),SK.glow,tilt,0,290,311.6);
-sk(rboxZ(210,5,2,2,.8),SK.glow,tilt,0,30,311.6);
+const ledBar = sk(rboxZ(190,4,2,2,.8),SK.glow,tilt,0,288,309.6);
 [-1,1].forEach(s=>decal(logo(false),118,23,tilt,s*167.4,262,58,s*Math.PI/2));
 [-1,1].forEach(s=>sk(rboxX(1.5,3,112,2,.6),SK.accent,tilt,s*167.4,244,58));
-/* rear vent grille */
-for(let i=0;i<6;i++) sk(rboxZ(150,6,2,3,.8),SK.graph,tilt,0,250-i*16,-6.6);
+/* rear: 7 inch touchscreen, faces the operator and tilts toward their eyes */
+sk(rboxZ(198,118,6,14,2.5),SK.graph,tilt,0,214,-9);
+const screenTex = canvasTex(640,360,drawScreen); texes.push(screenTex);
+const screen = new THREE.Mesh(new THREE.PlaneGeometry(168,94), new THREE.MeshBasicMaterial({map:screenTex,toneMapped:false}));
+screen.position.set(0,214,-12.4); screen.rotation.y=Math.PI; tilt.add(screen); skinParts.push(screen);
+for(let i=0;i<4;i++) sk(rboxZ(120,5,2,2.5,.8),SK.graph,tilt,0,128-i*14,-7.6);
 /* hopper collar + smoked lid on top */
 sk(annulus(54,39,16),SK.graph,tilt,0,340,70);
 sk(annulus(56,52,2),SK.accent,tilt,0,341,70);
@@ -1679,6 +1685,7 @@ const tr = {on:false, ext:0, ang:0};
 function applySkin(){
   const show = skinOn && !gearOnSafe();
   skinParts.forEach(m=>{ m.visible = show; });
+  tilt.children.forEach(m=>{ if(m.userData.part===P_HEAD) m.visible = !show; });
   baseSkins.forEach(m=>{ m.visible = !show && !gearOnSafe(); });
   if(!gearOnSafe()) platPlate.material = show ? SK.graph : M.plate;
 }
