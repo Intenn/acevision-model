@@ -1662,11 +1662,11 @@ sk(rbox(266,2,236,18,.8),SK.graph,pan,0,211,30);
 })();
 
 /* --- head: soft white pod with a dark glass visor; at 0° it sits on the cradle seat --- */
-sk(rboxC(334,314,228,{fr:2,fl:2,rr:58,rl:58},24),SK.white,tilt,0,165,107);
-sk(rboxC(334,314,80,{fr:58,fl:58,rr:2,rl:2},24),SK.visor,tilt,0,165,261);
+sk(rboxC(334,578,308,{fr:58,fl:58,rr:58,rl:58},24),SK.white,tilt,0,297,147);
+sk(rboxC(336,316,82,{fr:59,fl:59,rr:2,rl:2},24),SK.visor,tilt,0,165,262);
 const bore = new THREE.Mesh(new THREE.CircleGeometry(44,64), new THREE.MeshBasicMaterial({color:0x040506}));
-bore.position.set(0,BALL_Y,301.4); tilt.add(bore); skinParts.push(bore);
-const ringG = new THREE.TorusGeometry(50,4.5,20,80); const ledBar = sk(ringG,SK.glow,tilt,0,BALL_Y,301.6);
+bore.position.set(0,BALL_Y,303.4); tilt.add(bore); skinParts.push(bore);
+const ringG = new THREE.TorusGeometry(50,4.5,20,80); const ledBar = sk(ringG,SK.glow,tilt,0,BALL_Y,303.6);
 /* rear: dark glass panel with the 7 inch touchscreen, faces the operator */
 sk(rboxZ(214,156,4,20,1.5),SK.visor,tilt,0,206,-8.6);
 const screenTex = canvasTex(640,360,drawScreen); texes.push(screenTex);
@@ -1702,23 +1702,16 @@ sk(new THREE.TubeGeometry(spiralCurve,420,38,24,false),binMat,tilt).castShadow=f
 /* centre column, spokes and base disc */
 sk(CylY(24,190,32),SK.graph,tilt,SP.ax,322+95,SP.az);
 sk(CylY(30,8,40),SK.graph,tilt,SP.ax,322+190+4,SP.az);
-sk(CylY(122,6,64),SK.graph,tilt,SP.ax,325,SP.az);
 for(let k=0;k<5;k++){
   const ph = 0.9 + k*(SP.turns*2*Math.PI-1.4)/4, P = helix(ph);
   const dx=P.x-SP.ax, dz=P.z-SP.az, L=Math.hypot(dx,dz)-36-24;
   const sp=sk(Box(L,6,10),SK.graph,tilt,SP.ax+dx*(24+L/2)/Math.hypot(dx,dz),P.y,SP.az+dz*(24+L/2)/Math.hypot(dx,dz));
   sp.rotation.y = -Math.atan2(dz,dx);
 }
-/* spiral chamber: smoked glass upper body + white lid, same plan as the head, loading hatch on top */
-const glassMat = new THREE.MeshPhysicalMaterial({color:0x2a333b,roughness:.05,metalness:0,transparent:true,opacity:.24,clearcoat:1,clearcoatRoughness:.05,depthWrite:false,side:THREE.DoubleSide});
-const CH_Y0 = 322, CH_H = 240;
-sk(rboxC(334,CH_H,308,{fr:58,fl:58,rr:58,rl:58},10),glassMat,tilt,0,CH_Y0+CH_H/2,147).castShadow=false;
-sk(rboxC(334,26,308,{fr:58,fl:58,rr:58,rl:58},12),SK.white,tilt,0,CH_Y0+CH_H+11,147);
-(function(){ const top = spiralCurve.getPoint(0), yT = CH_Y0+CH_H+24;
-  sk(CylY(44,3,48),SK.graph,tilt,top.x,yT+0.5,top.z);
-  sk(new THREE.TorusGeometry(44,2.2,12,56).rotateX(Math.PI/2),SK.glow,tilt,top.x,yT+1.6,top.z);
-  sk(rbox(22,3,8,3,1),SK.graph,tilt,top.x,yT+2.6,top.z);
-})();
+/* spiral is fully inside the white body; balls are loaded through a flush door on the left side */
+const doorWhite = new THREE.MeshPhysicalMaterial({color:0xe6e8ea,roughness:.5,clearcoat:.2});
+sk(rboxX(1.6,104,116,16,.6),doorWhite,tilt,-167.6,494,122);
+sk(rboxX(1.2,4,34,2,.5),SK.accent,tilt,-168.6,452,122);
 /* 15 balls queued from the bottom of the track upward */
 const binBalls = []; const ballGeo = new THREE.SphereGeometry(33.5,28,18);
 (function(){ const L = spiralCurve.getLength();
@@ -1727,11 +1720,11 @@ const binBalls = []; const ballGeo = new THREE.SphereGeometry(33.5,28,18);
 })();
 let ballsLeft = binBalls.length;
 /* vision camera in the visor, aligned with the barrel */
-sk(CylZ(16,5,40),SK.graph,tilt,0,262,302);
+sk(CylZ(16,5,40),SK.graph,tilt,0,262,304);
 const lens = new THREE.Mesh(new THREE.CircleGeometry(8.5,40), new THREE.MeshPhysicalMaterial({color:0x10203a,roughness:.05,metalness:.3,clearcoat:1}));
-lens.position.set(0,262,304.7); tilt.add(lens); skinParts.push(lens);
-sk(new THREE.TorusGeometry(11.5,1.3,12,48),SK.alu,tilt,0,262,304.6);
-sk(CylZ(2.2,2,12),SK.glow,tilt,26,262,302.6);
+lens.position.set(0,262,306.7); tilt.add(lens); skinParts.push(lens);
+sk(new THREE.TorusGeometry(11.5,1.3,12,48),SK.alu,tilt,0,262,306.6);
+sk(CylZ(2.2,2,12),SK.glow,tilt,26,262,304.6);
 muzzle.position.z = 304; muzzleAhead.position.z = 305;
 
 /* --- touchscreen UI --- */
