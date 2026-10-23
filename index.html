@@ -1710,6 +1710,8 @@ for(let k=0;k<3;k++){
 /* spiral is fully inside the white body; balls are loaded through a flush door on the rear, above the screen */
 const doorWhite = new THREE.MeshPhysicalMaterial({color:0xe6e8ea,roughness:.5,clearcoat:.2});
 sk(rboxZ(124,72,1.6,14,.6),doorWhite,tilt,0,432,-7.8);
+/* front logo on the white area above the visor */
+decal(logo(false),190,37,tilt,0,412,301.4,0);
 sk(rboxZ(34,4,1.2,2,.5),SK.accent,tilt,0,402,-8.7);
 /* 15 balls queued from the bottom of the track upward */
 const binBalls = []; const ballGeo = new THREE.SphereGeometry(33.5,28,18);
